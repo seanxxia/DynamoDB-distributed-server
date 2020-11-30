@@ -6,9 +6,10 @@
     "build": "GOPATH=${PWD} PATH=$PATH:${PWD}/bin ./build.sh",
     "start:server": "GOPATH=${PWD} PATH=$PATH:${PWD}/bin ./run-server.sh",
     "start:client": "GOPATH=${PWD} PATH=$PATH:${PWD}/bin ./run-client.sh",
-    "install:test": "GOPATH=${PWD} ./install-test",
-    "test": "GOPATH=${PWD} PATH=$PATH:${PWD}/bin ./run-test.sh",
-    "format": "gofmt -w src/mydynamo src/mydynamotest src/sampletest"
+    "install:test": "GOPATH=${PWD} ./install-test.sh",
+    "test": "npm run build && npm run test:no-build",
+    "test:no-build": "GOPATH=${PWD} PATH=$PATH:${PWD}/bin ./run-test.sh",
+    "format": "gofmt -w src/mydynamo src/mydynamotest"
   },
   "repository": {
     "type": "git",

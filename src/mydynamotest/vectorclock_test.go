@@ -1,21 +1,21 @@
 package mydynamotest
 
 import (
-	"mydynamo"
 	"testing"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
-func TestBasicVectorClock(t *testing.T) {
-	t.Logf("Starting TestBasicVectorClock")
-
-	//create two vector clocks
-	clock1 := mydynamo.NewVectorClock()
-	clock2 := mydynamo.NewVectorClock()
-
-	//Test for equality
-	if !clock1.Equals(clock2) {
-		t.Fail()
-		t.Logf("Vector Clocks were not equal")
-	}
-
+func TestVectorClock(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "VectorClock Suite")
 }
+
+var _ = Describe("VectorClock", func() {
+	Context("1 and 2", func() {
+		It("should be 3", func() {
+			Expect(1 + 2).To(Equal(3))
+		})
+	})
+})

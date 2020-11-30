@@ -1,4 +1,4 @@
 #!/bin/bash
 # shellcheck disable=SC2068
-cd src/sampletest
+cd src/mydynamotest
 ginkgo
