@@ -59,3 +59,10 @@ func valuesEqual(v1 []byte, v2 []byte) bool {
 	}
 	return true
 }
+
+//Interate over the test cases array and apply the index and test case as arguments to the input function
+func MapTestCases(testCases [][]string, f func(i int, c []string)) {
+	for i, testCase := range testCases {
+		f(i, testCase)
+	}
+}
