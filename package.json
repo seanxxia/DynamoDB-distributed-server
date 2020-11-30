@@ -1,0 +1,23 @@
+{
+  "name": "module-4-project-cse224-chan-xia",
+  "version": "1.0.0",
+  "description": "A distributed key-value store similar to Amazon's DynamoDB",
+  "scripts": {
+    "build": "GOPATH=${PWD} PATH=$PATH:${PWD}/bin ./build.sh",
+    "start:server": "GOPATH=${PWD} PATH=$PATH:${PWD}/bin ./run-server.sh",
+    "start:client": "GOPATH=${PWD} PATH=$PATH:${PWD}/bin ./run-client.sh",
+    "install:test": "GOPATH=${PWD} ./install-test",
+    "test": "GOPATH=${PWD} PATH=$PATH:${PWD}/bin ./run-test.sh",
+    "format": "gofmt -w src/mydynamo src/mydynamotest src/sampletest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ucsd-cse-x24-fa20/module-4-project-cse224-chan-xia.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ucsd-cse-x24-fa20/module-4-project-cse224-chan-xia/issues"
+  },
+  "homepage": "https://github.com/ucsd-cse-x24-fa20/module-4-project-cse224-chan-xia#readme"
+}

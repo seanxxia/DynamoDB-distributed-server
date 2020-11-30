@@ -18,6 +18,9 @@
 /pkg
 /bin
 /src/github.com
+/src/golang.org
+/src/*.golang.org
+/src/gopkg.in
 
 # IDEs and editors
 /.idea
