@@ -2,6 +2,7 @@ package mydynamotest
 
 import (
 	"bytes"
+	"io/ioutil"
 	dy "mydynamo"
 	"os"
 	"os/exec"
@@ -23,12 +24,17 @@ type ServerCoordinator struct {
 }
 
 // Create (run) a new server coordinator process with given configs.
-func NewServerCoordinator(startingPort int, rValue int, wValue int, clusterSize int) ServerCoordinator {
+func NewServerCoordinator(startingPort int, rValue int, wValue int, clusterSize int, silent bool) ServerCoordinator {
 	coordinatorCmd := exec.Command("DynamoTestCoordinator",
 		strconv.Itoa(startingPort), strconv.Itoa(rValue), strconv.Itoa(wValue), strconv.Itoa(clusterSize))
 
-	coordinatorCmd.Stderr = os.Stderr
-	coordinatorCmd.Stdout = os.Stdout
+	if silent {
+		coordinatorCmd.Stderr = ioutil.Discard
+		coordinatorCmd.Stdout = ioutil.Discard
+	} else {
+		coordinatorCmd.Stderr = os.Stderr
+		coordinatorCmd.Stdout = os.Stdout
+	}
 
 	err := coordinatorCmd.Start()
 	if err != nil {
@@ -113,6 +119,7 @@ func MakeResult(pairs []Pair) dy.DynamoResult {
 	})
 }
 
+// Sort the object entries in the result by their vector clocks and contents
 func SortResultEntries(result *dy.DynamoResult) dy.DynamoResult {
 	getVectorClockBinary := func(clock dy.VectorClock) []byte {
 		var data string
