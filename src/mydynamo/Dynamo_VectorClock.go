@@ -30,7 +30,8 @@ func (s VectorClock) LessThan(otherVectorClock VectorClock) bool {
 //Returns true if neither VectorClock is causally descended from the other
 func (s VectorClock) Concurrent(otherVectorClock VectorClock) bool {
 	// NOTE: Equal vector clocks are not concurrent
-	// Ref: https://piazza.com/class/kfqynl4r6a0317?cid=915
+	// Reference:
+	// - https://piazza.com/class/kfqynl4r6a0317?cid=915
 	return !s.Equals(otherVectorClock) && !s.LessThan(otherVectorClock) && !otherVectorClock.LessThan(s)
 }
 

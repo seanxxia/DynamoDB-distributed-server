@@ -72,6 +72,20 @@ func (dynamoClient *RPCClient) Put(value PutArgs) bool {
 	return result
 }
 
+//Puts a value to the server without incrementing clock and replicating to other servers.
+func (dynamoClient *RPCClient) PutRaw(value PutArgs) bool {
+	var result bool
+	if dynamoClient.rpcConn == nil {
+		return false
+	}
+	err := dynamoClient.rpcConn.Call("MyDynamo.PutRaw", value, &result)
+	if err != nil {
+		log.Println(err)
+		return false
+	}
+	return result
+}
+
 //Gets a value from a server.
 func (dynamoClient *RPCClient) Get(key string) *DynamoResult {
 	var result DynamoResult
@@ -84,6 +98,19 @@ func (dynamoClient *RPCClient) Get(key string) *DynamoResult {
 		return nil
 	}
 	return &result
+}
+
+//Gets a value from a server.
+func (dynamoClient *RPCClient) GetRaw(key string, result *DynamoResult) bool {
+	if dynamoClient.rpcConn == nil {
+		return false
+	}
+	err := dynamoClient.rpcConn.Call("MyDynamo.GetRaw", key, result)
+	if err != nil {
+		log.Println(err)
+		return false
+	}
+	return true
 }
 
 //Emulates a crash on the server this client is connected to
@@ -119,4 +146,9 @@ func NewDynamoRPCClient(serverAddr string) *RPCClient {
 		ServerAddr: serverAddr,
 		rpcConn:    nil,
 	}
+}
+
+//Creates a new DynamoRPCClient from DynamoNode (address and port)
+func NewDynamoRPCClientFromDynamoNode(node DynamoNode) *RPCClient {
+	return NewDynamoRPCClient(node.Address + ":" + node.Port)
 }

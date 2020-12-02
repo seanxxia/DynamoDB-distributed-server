@@ -2,13 +2,15 @@ package main
 
 import (
 	"fmt"
-	"github.com/go-ini/ini"
 	"log"
 	"mydynamo"
 	"net/rpc"
 	"os"
 	"strconv"
 	"sync"
+	"time"
+
+	"github.com/go-ini/ini"
 )
 
 func main() {
@@ -75,6 +77,8 @@ func main() {
 	//Create a duplicate of dynamoNodeList that we can rotate
 	//so that each node has a distinct preference list
 	nodePreferenceList := dynamoNodeList
+
+	time.Sleep(3 * time.Second)
 
 	//Send the preference list to all servers
 	for _, info := range dynamoNodeList {
