@@ -170,7 +170,7 @@ func (s *DynamoServer) PutRaw(putArgs PutArgs, result *bool) error {
 		}
 
 		if objectEntry.Context.Clock.LessThan(vClock) {
-			remove(objectEntries, i)
+			objectEntries = remove(objectEntries, i)
 		} else {
 			// vClock.Concurrent(objectEntry.Context.Clock) == true
 			i++

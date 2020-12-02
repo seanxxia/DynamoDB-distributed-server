@@ -50,7 +50,9 @@ func main() {
 	for idx := 0; idx < config["cluster_size"]; idx++ {
 
 		//Create a server instance
-		serverInstance := mydynamo.NewDynamoServer(config["w_value"], config["r_value"], "localhost", strconv.Itoa(config["starting_port"]+idx), strconv.Itoa(idx))
+		serverInstance := mydynamo.NewDynamoServer(
+			config["w_value"], config["r_value"], "localhost", strconv.Itoa(config["starting_port"]+idx),
+			"s"+strconv.Itoa(idx))
 		serverList = append(serverList, serverInstance)
 
 		//Create an anonymous function in a goroutine that starts the server

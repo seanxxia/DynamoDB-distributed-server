@@ -12,6 +12,13 @@ func NewVectorClock() VectorClock {
 	}
 }
 
+// Creates a new VectorClock from local clock map (for testing only)
+func NewVectorClockFromMap(localClocks map[string]uint64) VectorClock {
+	return VectorClock{
+		NodeClocks: localClocks,
+	}
+}
+
 //Returns true if the other VectorClock is causally descended from this one
 func (s VectorClock) LessThan(otherVectorClock VectorClock) bool {
 	if s.Equals(otherVectorClock) {
@@ -71,4 +78,13 @@ func (s *VectorClock) Equals(otherVectorClock VectorClock) bool {
 	}
 
 	return true
+}
+
+// Returns the vector clock as map. (for testing only)
+func (s *VectorClock) ToMap() map[string]uint64 {
+	localClocks := make(map[string]uint64)
+	for k, v := range s.NodeClocks {
+		localClocks[k] = v
+	}
+	return localClocks
 }
