@@ -144,9 +144,9 @@ var _ = Describe("VectorClock", func() {
 					Expect(vClock2.LessThan(vClock1)).To(BeFalse())
 				})
 
-				It("should be concurrent.", func() {
-					Expect(vClock1.Concurrent(vClock2)).To(BeTrue())
-					Expect(vClock2.Concurrent(vClock1)).To(BeTrue())
+				It("should not be concurrent.", func() {
+					Expect(vClock1.Concurrent(vClock2)).To(BeFalse())
+					Expect(vClock2.Concurrent(vClock1)).To(BeFalse())
 				})
 
 				Context("after combine", func() {
@@ -162,9 +162,9 @@ var _ = Describe("VectorClock", func() {
 						Expect(vClockCombined.Equals(vClock2)).To(BeTrue())
 					})
 
-					It("should be concurrent to original vector clocks.", func() {
-						Expect(vClockCombined.Concurrent(vClock1)).To(BeTrue())
-						Expect(vClockCombined.Concurrent(vClock2)).To(BeTrue())
+					It("should not be concurrent to original vector clocks.", func() {
+						Expect(vClockCombined.Concurrent(vClock1)).To(BeFalse())
+						Expect(vClockCombined.Concurrent(vClock2)).To(BeFalse())
 					})
 				})
 			})

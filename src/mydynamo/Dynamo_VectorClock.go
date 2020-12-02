@@ -29,7 +29,9 @@ func (s VectorClock) LessThan(otherVectorClock VectorClock) bool {
 
 //Returns true if neither VectorClock is causally descended from the other
 func (s VectorClock) Concurrent(otherVectorClock VectorClock) bool {
-	return !s.LessThan(otherVectorClock) && !otherVectorClock.LessThan(s)
+	// NOTE: Equal vector clocks are not concurrent
+	// Ref: https://piazza.com/class/kfqynl4r6a0317?cid=915
+	return !s.Equals(otherVectorClock) && !s.LessThan(otherVectorClock) && !otherVectorClock.LessThan(s)
 }
 
 //Increments this VectorClock at the element associated with nodeId
@@ -41,6 +43,10 @@ func (s *VectorClock) Increment(nodeID string) {
 }
 
 //Changes this VectorClock to be causally descended from all VectorClocks in clocks
+//Notes from piazza:
+//	The intent is for a client to be able to combine the vector clocks of conflicting elements,
+//	and use the result of Combine() inside a Context as an argument to Put(), which would perform the
+//	increment, and thus make this combined vector clock causally descended.
 func (s *VectorClock) Combine(vectorClocks []VectorClock) {
 	for _, vectorClock := range vectorClocks {
 		for nodeID, clock := range vectorClock.NodeClocks {
