@@ -9,7 +9,7 @@ var _ = FDescribe("Basic", func() {
 	var sc ServerCoordinator
 
 	BeforeEach(func() {
-		sc = NewServerCoordinator(8000, 1, 1, 1, true)
+		sc = NewServerCoordinator(8000, 1, 1, 1)
 	})
 
 	AfterEach(func() {

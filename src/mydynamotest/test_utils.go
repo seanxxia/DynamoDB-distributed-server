@@ -2,21 +2,22 @@ package mydynamotest
 
 import (
 	"bytes"
-	"io/ioutil"
 	dy "mydynamo"
-	"os"
 	"os/exec"
 	"sort"
 	"strconv"
 	"time"
+
+	. "github.com/onsi/ginkgo"
+	"github.com/onsi/gomega/gexec"
 )
 
 const SERVER_COORDINATOR_STARTUP_WAIT_SECONDS = 3
 
 // The server coordinator type for test
 type ServerCoordinator struct {
-	cmd          *exec.Cmd
-	clientMap    map[int]*dy.RPCClient
+	session      *gexec.Session
+	rpcClientMap map[int]*dy.RPCClient
 	StartingPort int
 	RValue       int
 	WValue       int
@@ -24,19 +25,11 @@ type ServerCoordinator struct {
 }
 
 // Create (run) a new server coordinator process with given configs.
-func NewServerCoordinator(startingPort int, rValue int, wValue int, clusterSize int, silent bool) ServerCoordinator {
+func NewServerCoordinator(startingPort int, rValue int, wValue int, clusterSize int) ServerCoordinator {
 	coordinatorCmd := exec.Command("DynamoTestCoordinator",
 		strconv.Itoa(startingPort), strconv.Itoa(rValue), strconv.Itoa(wValue), strconv.Itoa(clusterSize))
 
-	if silent {
-		coordinatorCmd.Stderr = ioutil.Discard
-		coordinatorCmd.Stdout = ioutil.Discard
-	} else {
-		coordinatorCmd.Stderr = os.Stderr
-		coordinatorCmd.Stdout = os.Stdout
-	}
-
-	err := coordinatorCmd.Start()
+	session, err := gexec.Start(coordinatorCmd, GinkgoWriter, GinkgoWriter)
 	if err != nil {
 		panic(err)
 	}
@@ -44,8 +37,8 @@ func NewServerCoordinator(startingPort int, rValue int, wValue int, clusterSize 
 	time.Sleep(SERVER_COORDINATOR_STARTUP_WAIT_SECONDS * time.Second)
 
 	return ServerCoordinator{
-		cmd:          coordinatorCmd,
-		clientMap:    make(map[int]*dy.RPCClient),
+		session:      session,
+		rpcClientMap: make(map[int]*dy.RPCClient),
 		StartingPort: startingPort,
 		RValue:       rValue,
 		WValue:       wValue,
@@ -55,28 +48,24 @@ func NewServerCoordinator(startingPort int, rValue int, wValue int, clusterSize 
 
 // Kill the server coordinator process.
 func (s *ServerCoordinator) Kill() {
-	if s.cmd == nil {
-		return
-	}
-
-	_ = s.cmd.Process.Kill()
+	var _ = s.session.Kill().Wait()
 }
 
 // Get the RPC client for the ith server created by server coordinator.
 // The port for the server is computed by `s.StartingPort + serverIndex`.
 func (s *ServerCoordinator) GetClient(serverIndex int) *dy.RPCClient {
-	if client, ok := s.clientMap[serverIndex]; !ok {
+	if client, ok := s.rpcClientMap[serverIndex]; !ok {
 		client = dy.NewDynamoRPCClient("localhost:" + strconv.Itoa(s.StartingPort+serverIndex))
 		client.RpcConnect()
-		s.clientMap[serverIndex] = client
+		s.rpcClientMap[serverIndex] = client
 	}
 
-	return s.clientMap[serverIndex]
+	return s.rpcClientMap[serverIndex]
 }
 
 // Get the server ID (nodeID) for the ith server created by server coordinator.
 // This method is designed for testing vector clock
-func (s *ServerCoordinator) GetServerID(serverIndex int) string {
+func (s *ServerCoordinator) GetID(serverIndex int) string {
 	return "s" + strconv.Itoa(serverIndex)
 }
 
