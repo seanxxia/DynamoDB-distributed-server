@@ -127,6 +127,34 @@ func (dynamoClient *RPCClient) Crash(seconds int) bool {
 	return success
 }
 
+//Emulates a crash on the server this client is connected to
+func (dynamoClient *RPCClient) ForceCrash() {
+	if dynamoClient.rpcConn == nil {
+		return
+	}
+
+	var v Empty
+	err := dynamoClient.rpcConn.Call("MyDynamo.ForceCrash", v, &v)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+}
+
+//Make the server restore from the emulated crash state
+func (dynamoClient *RPCClient) ForceRestore() {
+	if dynamoClient.rpcConn == nil {
+		return
+	}
+
+	var v Empty
+	err := dynamoClient.rpcConn.Call("MyDynamo.ForceRestore", v, &v)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+}
+
 //Instructs the server this client is connected to gossip
 func (dynamoClient *RPCClient) Gossip() {
 	if dynamoClient.rpcConn == nil {
