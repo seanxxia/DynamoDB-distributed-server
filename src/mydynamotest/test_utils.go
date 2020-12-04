@@ -131,8 +131,6 @@ func GetEntryContextClocks(result *dy.DynamoResult) []dy.VectorClock {
 	return values
 }
 
-//
-
 //Interate over the test cases array and apply the index and test case as arguments to the input function
 func MapTestCases(testCases [][]string, f func(i int, c []string)) {
 	for i, testCase := range testCases {
