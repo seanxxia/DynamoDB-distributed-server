@@ -1,7 +1,6 @@
 package mydynamo
 
 import (
-	"fmt"
 	"log"
 	"net/rpc"
 )
@@ -17,7 +16,7 @@ func (dynamoClient *RPCClient) CleanConn() {
 	if dynamoClient.rpcConn != nil {
 		e = dynamoClient.rpcConn.Close()
 		if e != nil {
-			fmt.Println("CleanConnError", e)
+			log.Println("CleanConnError", e)
 		}
 	}
 	dynamoClient.rpcConn = nil
@@ -45,7 +44,7 @@ func (dynamoClient *RPCClient) CleanAndConn() error {
 	if dynamoClient.rpcConn != nil {
 		e = dynamoClient.rpcConn.Close()
 		if e != nil {
-			fmt.Println("CleanConnError", e)
+			log.Println("CleanConnError", e)
 		}
 	}
 	dynamoClient.rpcConn = nil
