@@ -82,6 +82,24 @@ func MakePutFromEntry(key string, entry dy.ObjectEntry) dy.PutArgs {
 	}
 }
 
+//Creates a PutArgs with the associated key, vector clock map, and value
+func MakePutFromVectorClockMapAndValue(key string, vectorClockMap map[string]uint64, value []byte) dy.PutArgs {
+	return dy.PutArgs{
+		Key: key,
+		Context: dy.Context{
+			Clock: NewVectorClockFromMap(vectorClockMap),
+		},
+		Value: value,
+	}
+}
+
+// Creates a new VectorClock from local clock map (for testing only)
+func NewVectorClockFromMap(localClocks map[string]uint64) dy.VectorClock {
+	return dy.VectorClock{
+		NodeClocks: localClocks,
+	}
+}
+
 // Returns the list of DynamoResult's entry values. The order of the elements in the returned list
 // is the same as the corresponding entries in DynamoResult's entry list. Two entries with same value but different
 // context will lead to duplicated elements in the returned list.
