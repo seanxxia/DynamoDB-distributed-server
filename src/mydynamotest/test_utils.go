@@ -1,10 +1,8 @@
 package mydynamotest
 
 import (
-	"bytes"
 	dy "mydynamo"
 	"os/exec"
-	"sort"
 	"strconv"
 	"time"
 
@@ -84,64 +82,38 @@ func MakePutFromEntry(key string, entry dy.ObjectEntry) dy.PutArgs {
 	}
 }
 
-// The pair type for representing ObjectEntry in tests
-type Pair struct {
-	ClockMap map[string]uint64
-	Value    []byte
-}
-
-// Creates DynamoResult from pairs of vector clock and value
-func MakeResult(pairs []Pair) dy.DynamoResult {
-	entries := make([]dy.ObjectEntry, 0)
-
-	for _, pair := range pairs {
-		entries = append(entries, dy.ObjectEntry{
-			Context: dy.Context{
-				Clock: dy.NewVectorClockFromMap(pair.ClockMap),
-			},
-			Value: pair.Value,
-		})
+// Returns the list of DynamoResult's entry values. The order of the elements in the returned list
+// is the same as the corresponding entries in DynamoResult's entry list. Two entries with same value but different
+// context will lead to duplicated elements in the returned list.
+func GetEntryValues(result *dy.DynamoResult) [][]byte {
+	values := make([][]byte, 0)
+	if result == nil || result.EntryList == nil {
+		return values
 	}
 
-	return SortResultEntries(&dy.DynamoResult{
-		EntryList: entries,
-	})
-}
-
-// Sort the object entries in the result by their vector clocks and contents
-func SortResultEntries(result *dy.DynamoResult) dy.DynamoResult {
-	getVectorClockBinary := func(clock dy.VectorClock) []byte {
-		var data string
-
-		clockMap := clock.ToMap()
-		keys := make([]string, 0)
-		for key := range clockMap {
-			keys = append(keys, key)
-		}
-
-		sort.Strings(keys)
-		for _, key := range keys {
-			data += key + ";,=,;" + strconv.FormatInt(int64(clockMap[key]), 16) + "?:=:?"
-		}
-
-		return []byte(data)
+	for _, entry := range result.EntryList {
+		values = append(values, entry.Value)
 	}
 
-	getEntryBinary := func(entry dy.ObjectEntry) []byte {
-		data := getVectorClockBinary(entry.Context.Clock)
-		data = append(data, []byte("-+.;.+-")...)
-		data = append(data, entry.Value...)
-		return data
+	return values
+}
+
+// Returns the list of DynamoResult's entry clock of contexts. The order of the elements in the returned list
+// is the same as the corresponding contexts in DynamoResult's entry list.
+func GetEntryContextClocks(result *dy.DynamoResult) []dy.VectorClock {
+	values := make([]dy.VectorClock, 0)
+	if result == nil || result.EntryList == nil {
+		return values
 	}
 
-	sort.SliceStable(result.EntryList, func(i, j int) bool {
-		a := getEntryBinary(result.EntryList[i])
-		b := getEntryBinary(result.EntryList[j])
-		return bytes.Compare(a, b) < 0
-	})
+	for _, entry := range result.EntryList {
+		values = append(values, entry.Context.Clock)
+	}
 
-	return *result
+	return values
 }
+
+//
 
 //Interate over the test cases array and apply the index and test case as arguments to the input function
 func MapTestCases(testCases [][]string, f func(i int, c []string)) {
