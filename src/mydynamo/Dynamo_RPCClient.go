@@ -177,5 +177,7 @@ func NewDynamoRPCClient(serverAddr string) *RPCClient {
 
 //Creates a new DynamoRPCClient from DynamoNode (address and port)
 func NewDynamoRPCClientFromDynamoNode(node DynamoNode) *RPCClient {
-	return NewDynamoRPCClient(node.Address + ":" + node.Port)
+	client := NewDynamoRPCClient(node.Address + ":" + node.Port)
+	client.RpcConnect()
+	return client
 }

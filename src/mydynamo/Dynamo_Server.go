@@ -53,7 +53,11 @@ func (s *DynamoServer) Gossip(_ Empty, _ *Empty) error {
 	defer s.objectEntriesMapMutex.Unlock()
 
 	for _, preferedDynamoNode := range s.preferenceList {
-		dynamoRPCClient := NewDynamoRPCClientFromDynamoNode(preferedDynamoNode)
+		if preferedDynamoNode == s.selfNode {
+			continue
+		}
+
+		rpcClient := NewDynamoRPCClientFromDynamoNode(preferedDynamoNode)
 		for key, objectEntries := range s.objectEntriesMap {
 			for _, objectEntry := range objectEntries {
 				putArgs := PutArgs{
@@ -61,7 +65,8 @@ func (s *DynamoServer) Gossip(_ Empty, _ *Empty) error {
 					Context: objectEntry.Context,
 					Value:   objectEntry.Value,
 				}
-				dynamoRPCClient.PutRaw(putArgs)
+
+				rpcClient.PutRaw(putArgs)
 			}
 		}
 	}
@@ -114,7 +119,7 @@ func (s *DynamoServer) Put(putArgs PutArgs, result *bool) error {
 		return err
 	}
 
-	wCount := 0
+	wCount := 1
 	for _, preferedDynamoNode := range s.preferenceList {
 		if wCount >= s.wValue {
 			break
@@ -122,8 +127,8 @@ func (s *DynamoServer) Put(putArgs PutArgs, result *bool) error {
 
 		// TODO: Reuse RPC client
 		// TODO: Store success / fail results to reduce redundant data transfer in gossip
-		dynamoRPCClient := NewDynamoRPCClientFromDynamoNode(preferedDynamoNode)
-		if dynamoRPCClient.PutRaw(putArgs) {
+		rpcClient := NewDynamoRPCClientFromDynamoNode(preferedDynamoNode)
+		if rpcClient.PutRaw(putArgs) {
 			wCount++
 		}
 	}
@@ -159,7 +164,6 @@ func (s *DynamoServer) PutRaw(putArgs PutArgs, result *bool) error {
 				Value:   value,
 			},
 		}
-
 		return nil
 	}
 
@@ -198,16 +202,16 @@ func (s *DynamoServer) Get(key string, result *DynamoResult) error {
 		return err
 	}
 
-	rCount := 0
+	rCount := 1
 	for _, preferedDynamoNode := range s.preferenceList {
 		if rCount >= s.rValue {
 			break
 		}
 
 		// TODO: Reuse RPC client
-		dynamoRPCClient := NewDynamoRPCClientFromDynamoNode(preferedDynamoNode)
+		rpcClient := NewDynamoRPCClientFromDynamoNode(preferedDynamoNode)
 		remoteResult := DynamoResult{EntryList: nil}
-		if dynamoRPCClient.GetRaw(key, &remoteResult) {
+		if rpcClient.GetRaw(key, &remoteResult) {
 			rCount++
 
 			// Iterate over remote entries and add concurrent entries to result
