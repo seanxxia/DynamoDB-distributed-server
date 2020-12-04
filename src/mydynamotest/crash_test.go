@@ -24,12 +24,12 @@ var _ = Describe("Crash", func() {
 	})
 
 	It("should return true if server is crashed by the call.", func() {
-		Expect(sc.GetClient(0).Crash(3)).To(BeTrue())
+		Expect(sc.GetClient(0).Crash(2)).To(BeTrue())
 	})
 
-	Context("after calling Crash(3) through RPC client", func() {
+	Context("after calling Crash(2) through RPC client", func() {
 		BeforeEach(func() {
-			var _ = sc.GetClient(0).Crash(3)
+			var _ = sc.GetClient(0).Crash(2)
 		})
 
 		Context("when calling Get(...)", func() {
