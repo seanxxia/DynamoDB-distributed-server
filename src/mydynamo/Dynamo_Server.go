@@ -124,6 +124,9 @@ func (s *DynamoServer) Put(putArgs PutArgs, result *bool) error {
 		if wCount >= s.wValue {
 			break
 		}
+		if preferedDynamoNode == s.selfNode {
+			continue
+		}
 
 		// TODO: Reuse RPC client
 		// TODO: Store success / fail results to reduce redundant data transfer in gossip
@@ -133,9 +136,7 @@ func (s *DynamoServer) Put(putArgs PutArgs, result *bool) error {
 		}
 	}
 
-	if wCount < s.wValue {
-		*result = false
-	}
+	*result = wCount >= s.wValue
 	return nil
 }
 
@@ -164,12 +165,14 @@ func (s *DynamoServer) PutRaw(putArgs PutArgs, result *bool) error {
 				Value:   value,
 			},
 		}
+		*result = true
 		return nil
 	}
 
 	for i := 0; i < len(objectEntries); {
 		objectEntry := objectEntries[i]
 		if vClock.LessThan(objectEntry.Context.Clock) || vClock.Equals(objectEntry.Context.Clock) {
+			*result = true
 			return nil
 		}
 
@@ -185,6 +188,7 @@ func (s *DynamoServer) PutRaw(putArgs PutArgs, result *bool) error {
 		Context: NewContext(vClock),
 		Value:   value,
 	})
+
 	s.objectEntriesMap[key] = objectEntries
 
 	*result = true
@@ -207,6 +211,9 @@ func (s *DynamoServer) Get(key string, result *DynamoResult) error {
 		if rCount >= s.rValue {
 			break
 		}
+		if preferedDynamoNode == s.selfNode {
+			continue
+		}
 
 		// TODO: Reuse RPC client
 		rpcClient := NewDynamoRPCClientFromDynamoNode(preferedDynamoNode)
@@ -216,15 +223,21 @@ func (s *DynamoServer) Get(key string, result *DynamoResult) error {
 
 			// Iterate over remote entries and add concurrent entries to result
 			// TODO: Improve performance
+
 			for _, remoteEntry := range remoteResult.EntryList {
 				isRemoteEntryConcurrent := true
-				for _, localEntry := range result.EntryList {
-					if !remoteEntry.Context.Clock.Concurrent(localEntry.Context.Clock) {
+				indicesToRemove := make([]int, 0)
+				for i, localEntry := range result.EntryList {
+					if localEntry.Context.Clock.LessThan(remoteEntry.Context.Clock) {
+						indicesToRemove = append(indicesToRemove, i)
+					} else if !remoteEntry.Context.Clock.Concurrent(localEntry.Context.Clock) {
 						isRemoteEntryConcurrent = false
-						break
 					}
 				}
 
+				for i := len(indicesToRemove) - 1; i >= 0; i-- {
+					result.EntryList = remove(result.EntryList, indicesToRemove[i])
+				}
 				if isRemoteEntryConcurrent {
 					result.EntryList = append(result.EntryList, remoteEntry)
 				}
