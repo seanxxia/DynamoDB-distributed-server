@@ -58,12 +58,12 @@ func (s *DynamoServer) Gossip(_ Empty, _ *Empty) error {
 		}
 
 		rpcClient := NewDynamoRPCClientFromDynamoNode(preferedDynamoNode)
-		for key, objectEntries := range s.objectEntriesMap {
-			for _, objectEntry := range objectEntries {
+		for key, localEntries := range s.objectEntriesMap {
+			for _, localEntry := range localEntries {
 				putArgs := PutArgs{
 					Key:     key,
-					Context: objectEntry.Context,
-					Value:   objectEntry.Value,
+					Context: localEntry.Context,
+					Value:   localEntry.Value,
 				}
 
 				rpcClient.PutRaw(putArgs)
@@ -157,8 +157,8 @@ func (s *DynamoServer) PutRaw(putArgs PutArgs, result *bool) error {
 	s.objectEntriesMapMutex.Lock()
 	defer s.objectEntriesMapMutex.Unlock()
 
-	objectEntries, isObjectEntriesExisted := s.objectEntriesMap[key]
-	if !isObjectEntriesExisted {
+	localEntries, isLocalEntriesExisted := s.objectEntriesMap[key]
+	if !isLocalEntriesExisted {
 		s.objectEntriesMap[key] = []ObjectEntry{
 			ObjectEntry{
 				Context: NewContext(vClock),
@@ -169,27 +169,27 @@ func (s *DynamoServer) PutRaw(putArgs PutArgs, result *bool) error {
 		return nil
 	}
 
-	for i := 0; i < len(objectEntries); {
-		objectEntry := objectEntries[i]
-		if vClock.LessThan(objectEntry.Context.Clock) || vClock.Equals(objectEntry.Context.Clock) {
+	for i := 0; i < len(localEntries); {
+		localEntry := localEntries[i]
+		if vClock.LessThan(localEntry.Context.Clock) || vClock.Equals(localEntry.Context.Clock) {
 			*result = true
 			return nil
 		}
 
-		if objectEntry.Context.Clock.LessThan(vClock) {
-			objectEntries = remove(objectEntries, i)
+		if localEntry.Context.Clock.LessThan(vClock) {
+			localEntries = remove(localEntries, i)
 		} else {
-			// vClock.Concurrent(objectEntry.Context.Clock) == true
+			// vClock.Concurrent(localEntry.Context.Clock) == true
 			i++
 		}
 	}
 
-	objectEntries = append(objectEntries, ObjectEntry{
+	localEntries = append(localEntries, ObjectEntry{
 		Context: NewContext(vClock),
 		Value:   value,
 	})
 
-	s.objectEntriesMap[key] = objectEntries
+	s.objectEntriesMap[key] = localEntries
 
 	*result = true
 	return nil
@@ -260,8 +260,8 @@ func (s *DynamoServer) GetRaw(key string, result *DynamoResult) error {
 	s.objectEntriesMapMutex.Lock()
 	defer s.objectEntriesMapMutex.Unlock()
 
-	if objectEntries, ok := s.objectEntriesMap[key]; ok {
-		result.EntryList = append(result.EntryList, objectEntries...)
+	if localEntries, ok := s.objectEntriesMap[key]; ok {
+		result.EntryList = append(result.EntryList, localEntries...)
 	}
 
 	return nil

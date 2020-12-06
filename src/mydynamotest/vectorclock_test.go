@@ -9,7 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("VectorClock", func() {
+var _ = XDescribe("VectorClock", func() {
 	Describe("Empty vector clocks", func() {
 		var vClock1 dy.VectorClock
 		var vClock2 dy.VectorClock
