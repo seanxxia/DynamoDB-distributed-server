@@ -2,6 +2,7 @@ package mydynamotest
 
 import (
 	. "github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
 )
 
@@ -11,7 +12,7 @@ var _ = Describe("ForceCrash", func() {
 
 	BeforeEach(func() {
 		// StartingPort: 8000, R-Value: 1, W-Value: 1, ClusterSize: 1
-		sc = NewServerCoordinator(8000, 1, 1, 1)
+		sc = NewServerCoordinator(8000+config.GinkgoConfig.ParallelNode*100, 1, 1, 1)
 
 		// Put key "k1" to the server for testing
 		sc.GetClient(0).Put(MakePutFreshEntry("k0", []byte("v0")))

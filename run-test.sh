@@ -3,4 +3,4 @@
 rm -rf ./bin/DynamoTest*
 go install ./src/mydynamotest/...
 cd src/mydynamotest
-ginkgo
+ginkgo -nodes=5
