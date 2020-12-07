@@ -10,7 +10,7 @@
     "test": "npm run build && npm run test:no-build",
     "test:no-build": "GOPATH=${PWD} PATH=$PATH:${PWD}/bin ./run-test.sh",
     "format": "gofmt -w src/mydynamo src/mydynamotest",
-    "lint": "GOPATH=${PWD} ./run-golint.sh"
+    "lint": "GOPATH=${PWD} ./run-lint.sh"
   },
   "repository": {
     "type": "git",
