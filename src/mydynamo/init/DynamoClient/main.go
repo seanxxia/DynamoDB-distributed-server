@@ -12,7 +12,14 @@ func main() {
 
 	//this client connects to the server on port 8080
 	clientInstance := mydynamo.NewDynamoRPCClient("localhost:" + strconv.Itoa(serverPort+0))
-	clientInstance.RpcConnect()
+
+	retryMax := 3
+	for i := 0; i < retryMax; i++ {
+		err := clientInstance.RpcConnect()
+		if err == nil {
+			break
+		}
+	}
 
 	//You can use the space below to write some operations that you want your client to do
 }

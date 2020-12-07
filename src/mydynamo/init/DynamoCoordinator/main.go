@@ -35,11 +35,11 @@ func main() {
 	// Load the detailed configuration from section "mydynamo"
 	dynamoConfigs := configContent.Section(mydynamo.MYDYNAMO)
 
-	serverPort, err := dynamoConfigs.Key(mydynamo.SERVER_PORT).Int()
-	r_value, err := dynamoConfigs.Key(mydynamo.R_VALUE).Int()
-	w_value, err := dynamoConfigs.Key(mydynamo.W_VALUE).Int()
-	cluster_size, err := dynamoConfigs.Key(mydynamo.CLUSTER_SIZE).Int()
-	if err != nil {
+	serverPort, errPort := dynamoConfigs.Key(mydynamo.SERVER_PORT).Int()
+	r_value, errR := dynamoConfigs.Key(mydynamo.R_VALUE).Int()
+	w_value, errW := dynamoConfigs.Key(mydynamo.W_VALUE).Int()
+	cluster_size, errClusterSize := dynamoConfigs.Key(mydynamo.CLUSTER_SIZE).Int()
+	if errPort != nil || errR != nil || errW != nil || errClusterSize != nil {
 		log.Println(err)
 		log.Println("Failed to load config file, field is wrong type:", configFilePath)
 		log.Println(mydynamo.USAGE_STRING)
@@ -48,7 +48,7 @@ func main() {
 	fmt.Println("Done loading configurations")
 
 	//keep a list of servers so we can communicate with them
-	serverList := make([]mydynamo.DynamoServer, 0)
+	// serverList := make([]mydynamo.DynamoServer, 0)
 
 	//spin up a dynamo cluster
 	dynamoNodeList := make([]mydynamo.DynamoNode, 0)
@@ -60,7 +60,7 @@ func main() {
 
 		//Create a server instance
 		serverInstance := mydynamo.NewDynamoServer(w_value, r_value, "localhost", strconv.Itoa(serverPort+idx), strconv.Itoa(idx))
-		serverList = append(serverList, serverInstance)
+		// serverList = append(serverList, serverInstance)
 
 		//Create an anonymous function in a goroutine that starts the server
 		go func() {

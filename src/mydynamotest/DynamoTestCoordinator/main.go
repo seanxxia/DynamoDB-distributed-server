@@ -31,15 +31,15 @@ func main() {
 
 	// Load the configuration file
 	config := make(map[string]int)
-	config["starting_port"], err = strconv.Atoi(os.Args[CONFIG_STARTING_PORT_ARG_INDEX])
-	config["r_value"], err = strconv.Atoi(os.Args[CONFIG_R_VALUE_ARG_INDEX])
-	config["w_value"], err = strconv.Atoi(os.Args[CONFIG_W_VALUE_ARG_INDEX])
-	config["cluster_size"], err = strconv.Atoi(os.Args[CONFIG_CLUSTER_SIZE_ARG_INDEX])
+	config["starting_port"], _ = strconv.Atoi(os.Args[CONFIG_STARTING_PORT_ARG_INDEX])
+	config["r_value"], _ = strconv.Atoi(os.Args[CONFIG_R_VALUE_ARG_INDEX])
+	config["w_value"], _ = strconv.Atoi(os.Args[CONFIG_W_VALUE_ARG_INDEX])
+	config["cluster_size"], _ = strconv.Atoi(os.Args[CONFIG_CLUSTER_SIZE_ARG_INDEX])
 
 	fmt.Println("Done loading configurations: ", config)
 
 	//keep a list of servers so we can communicate with them
-	serverList := make([]mydynamo.DynamoServer, 0)
+	// serverList := make([]mydynamo.DynamoServer, 0)
 
 	//spin up a dynamo cluster
 	dynamoNodeList := make([]mydynamo.DynamoNode, 0)
@@ -53,7 +53,7 @@ func main() {
 		serverInstance := mydynamo.NewDynamoServer(
 			config["w_value"], config["r_value"], "localhost", strconv.Itoa(config["starting_port"]+idx),
 			"s"+strconv.Itoa(idx))
-		serverList = append(serverList, serverInstance)
+		// serverList = append(serverList, serverInstance)
 
 		//Create an anonymous function in a goroutine that starts the server
 		go func() {

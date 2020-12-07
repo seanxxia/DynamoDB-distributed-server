@@ -18,7 +18,7 @@ type DynamoServer struct {
 	selfNode              DynamoNode   //This node's address and port info
 	nodeID                string       //ID of this node
 	objectEntriesMap      map[string][]ObjectEntry
-	objectEntriesMapMutex sync.Mutex
+	objectEntriesMapMutex *sync.Mutex
 	crashTimeout          time.Time
 }
 
@@ -274,14 +274,16 @@ func NewDynamoServer(w int, r int, hostAddr string, hostPort string, id string) 
 		Address: hostAddr,
 		Port:    hostPort,
 	}
+
 	return DynamoServer{
-		wValue:           w,
-		rValue:           r,
-		preferenceList:   preferenceList,
-		selfNode:         selfNodeInfo,
-		nodeID:           id,
-		objectEntriesMap: make(map[string][]ObjectEntry),
-		crashTimeout:     time.Now().AddDate(0, 0, -1),
+		wValue:                w,
+		rValue:                r,
+		preferenceList:        preferenceList,
+		selfNode:              selfNodeInfo,
+		nodeID:                id,
+		objectEntriesMap:      make(map[string][]ObjectEntry),
+		crashTimeout:          time.Now().AddDate(0, 0, -1),
+		objectEntriesMapMutex: &sync.Mutex{},
 	}
 }
 

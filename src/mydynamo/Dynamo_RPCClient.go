@@ -20,7 +20,6 @@ func (dynamoClient *RPCClient) CleanConn() {
 		}
 	}
 	dynamoClient.rpcConn = nil
-	return
 }
 
 //Establishes an RPC connection to the server this Client is associated with
@@ -178,6 +177,13 @@ func NewDynamoRPCClient(serverAddr string) *RPCClient {
 //Creates a new DynamoRPCClient from DynamoNode (address and port)
 func NewDynamoRPCClientFromDynamoNode(node DynamoNode) *RPCClient {
 	client := NewDynamoRPCClient(node.Address + ":" + node.Port)
-	client.RpcConnect()
+
+	retryMax := 3
+	for i := 0; i < retryMax; i++ {
+		err := client.RpcConnect()
+		if err == nil {
+			break
+		}
+	}
 	return client
 }

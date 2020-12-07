@@ -6,14 +6,14 @@ func remove(list []ObjectEntry, index int) []ObjectEntry {
 }
 
 //Returns true if the specified list of ints contains the specified item
-func contains(list []int, item int) bool {
-	for _, v := range list {
-		if v == item {
-			return true
-		}
-	}
-	return false
-}
+// func contains(list []int, item int) bool {
+// 	for _, v := range list {
+// 		if v == item {
+// 			return true
+// 		}
+// 	}
+// 	return false
+// }
 
 //Rotates a preference list by one, so that we can give each node a unique preference list
 func RotateServerList(list []DynamoNode) []DynamoNode {
