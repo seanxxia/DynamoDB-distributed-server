@@ -13,7 +13,7 @@ var _ = Describe("Gossip", func() {
 	Describe("Two Servers", func() {
 		BeforeEach(func() {
 			// StartingPort: 8000, R-Value: 1, W-Value: 1, ClusterSize: 2
-			sc = NewServerCoordinator(8000+config.GinkgoConfig.ParallelNode * 100, 1, 1, 2)
+			sc = NewServerCoordinator(8000+config.GinkgoConfig.ParallelNode*100, 1, 1, 2)
 		})
 
 		AfterEach(func() {
@@ -220,7 +220,7 @@ var _ = Describe("Gossip", func() {
 	Describe("Three Servers", func() {
 		BeforeEach(func() {
 			// StartingPort: 8000, R-Value: 1, W-Value: 1, ClusterSize: 3
-			sc = NewServerCoordinator(8000+config.GinkgoConfig.ParallelNode * 100, 1, 1, 3)
+			sc = NewServerCoordinator(8000+config.GinkgoConfig.ParallelNode*100, 1, 1, 3)
 		})
 
 		AfterEach(func() {

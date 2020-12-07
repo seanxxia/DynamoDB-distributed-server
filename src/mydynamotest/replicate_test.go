@@ -13,7 +13,7 @@ var _ = Describe("Put & Get Replicate", func() {
 
 		BeforeEach(func() {
 			// StartingPort: 8000, R-Value: 1, W-Value: 2, ClusterSize: 3
-			sc = NewServerCoordinator(8000+config.GinkgoConfig.ParallelNode * 100, 1, 2, 3)
+			sc = NewServerCoordinator(8000+config.GinkgoConfig.ParallelNode*100, 1, 2, 3)
 		})
 
 		AfterEach(func() {
@@ -155,7 +155,7 @@ var _ = Describe("Put & Get Replicate", func() {
 
 		BeforeEach(func() {
 			// StartingPort: 8000, R-Value: 2, W-Value: 1, ClusterSize: 3
-			sc = NewServerCoordinator(8000+config.GinkgoConfig.ParallelNode * 100, 2, 1, 3)
+			sc = NewServerCoordinator(8000+config.GinkgoConfig.ParallelNode*100, 2, 1, 3)
 		})
 
 		AfterEach(func() {
