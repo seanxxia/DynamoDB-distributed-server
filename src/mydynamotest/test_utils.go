@@ -52,9 +52,16 @@ func (s *ServerCoordinator) Kill() {
 // Get the RPC client for the ith server created by server coordinator.
 // The port for the server is computed by `s.StartingPort + serverIndex`.
 func (s *ServerCoordinator) GetClient(serverIndex int) *dy.RPCClient {
-	if client, ok := s.rpcClientMap[serverIndex]; !ok {
-		client = dy.NewDynamoRPCClient("localhost:" + strconv.Itoa(s.StartingPort+serverIndex))
-		client.RpcConnect()
+	if _, ok := s.rpcClientMap[serverIndex]; !ok {
+		client := dy.NewDynamoRPCClient("localhost:" + strconv.Itoa(s.StartingPort+serverIndex))
+
+		retryMax := 3
+		for i := 0; i < retryMax; i++ {
+			err := client.RpcConnect()
+			if err == nil {
+				break
+			}
+		}
 		s.rpcClientMap[serverIndex] = client
 	}
 
