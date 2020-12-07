@@ -38,8 +38,14 @@ jobs:
           go get github.com/onsi/ginkgo/ginkgo
           go get github.com/onsi/gomega/...
         
-      - name: golangci-lint
+      - name: golangci-lint mydynamo
         uses: golangci/golangci-lint-action@v2
         with:
-          # Required: the version of golangci-lint is required and must be specified without patch version: we always use the latest patch version.
           version: v1.33
+          working-directory: src/mydynamo
+
+      - name: golangci-lint mydynamotest
+        uses: golangci/golangci-lint-action@v2
+        with:
+          version: v1.33
+          working-directory: src/mydynamotest
