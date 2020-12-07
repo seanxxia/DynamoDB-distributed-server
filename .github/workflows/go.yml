@@ -28,9 +28,12 @@ jobs:
       run: |
         echo "$(pwd)/bin" >> $GITHUB_PATH
         echo "GOPATH=$(pwd)" >> $GITHUB_ENV
-
+        
     - name: Build
       run: bash ./build.sh
+      
+    - name: Install test dependencies
+      run: bash ./install-test.sh
 
     - name: Test
       run: bash ./run-test.sh
