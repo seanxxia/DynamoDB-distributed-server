@@ -9,7 +9,8 @@
     "install:test": "GOPATH=${PWD} ./install-test.sh",
     "test": "npm run build && npm run test:no-build",
     "test:no-build": "GOPATH=${PWD} PATH=$PATH:${PWD}/bin ./run-test.sh",
-    "format": "gofmt -w src/mydynamo src/mydynamotest"
+    "format": "gofmt -w src/mydynamo src/mydynamotest",
+    "lint": "golangci-lint run src/mydynamo src/mydynamotest"
   },
   "repository": {
     "type": "git",
