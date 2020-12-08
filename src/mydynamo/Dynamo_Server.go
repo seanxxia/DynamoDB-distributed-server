@@ -6,20 +6,18 @@ import (
 	"net"
 	"net/http"
 	"net/rpc"
-	"sync"
 	"time"
 )
 
 type DynamoServer struct {
 	/*------------Dynamo-specific-------------*/
-	wValue                int          //Number of nodes to write to on each Put
-	rValue                int          //Number of nodes to read from on each Get
-	preferenceList        []DynamoNode //Ordered list of other Dynamo nodes to perform operations o
-	selfNode              DynamoNode   //This node's address and port info
-	nodeID                string       //ID of this node
-	objectEntriesMap      map[string][]ObjectEntry
-	objectEntriesMapMutex *sync.Mutex
-	crashTimeout          time.Time
+	wValue          int          //Number of nodes to write to on each Put
+	rValue          int          //Number of nodes to read from on each Get
+	preferenceList  []DynamoNode //Ordered list of other Dynamo nodes to perform operations o
+	selfNode        DynamoNode   //This node's address and port info
+	nodeID          string       //ID of this node
+	localEntriesMap ObjectEntriesMap
+	crashTimeout    time.Time
 }
 
 // Returns error if the server is in crash state, otherwise nil
@@ -48,17 +46,24 @@ func (s *DynamoServer) Gossip(_ Empty, _ *Empty) error {
 		return err
 	}
 
-	// TODO: Use fine-grained lock (Do we need read lock here?)
-	s.objectEntriesMapMutex.Lock()
-	defer s.objectEntriesMapMutex.Unlock()
+	entryKeys := s.localEntriesMap.GetKeys()
+	rpcClientMap := map[DynamoNode]*RPCClient{}
 
-	for _, preferedDynamoNode := range s.preferenceList {
-		if preferedDynamoNode == s.selfNode {
-			continue
-		}
+	for _, key := range entryKeys {
+		for _, preferedDynamoNode := range s.preferenceList {
+			if preferedDynamoNode == s.selfNode {
+				continue
+			}
 
-		rpcClient := NewDynamoRPCClientFromDynamoNode(preferedDynamoNode)
-		for key, localEntries := range s.objectEntriesMap {
+			if _, ok := rpcClientMap[preferedDynamoNode]; !ok {
+				rpcClient := NewDynamoRPCClientFromDynamoNode(preferedDynamoNode)
+				defer rpcClient.CleanConn()
+
+				rpcClientMap[preferedDynamoNode] = rpcClient
+			}
+
+			s.localEntriesMap.RLock(key)
+			localEntries := s.localEntriesMap.Get(key)
 			for _, localEntry := range localEntries {
 				putArgs := PutArgs{
 					Key:     key,
@@ -66,8 +71,9 @@ func (s *DynamoServer) Gossip(_ Empty, _ *Empty) error {
 					Value:   localEntry.Value,
 				}
 
-				rpcClient.PutRaw(putArgs)
+				rpcClientMap[preferedDynamoNode].PutRaw(putArgs)
 			}
+			s.localEntriesMap.RUnlock(key)
 		}
 	}
 	return nil
@@ -128,9 +134,9 @@ func (s *DynamoServer) Put(putArgs PutArgs, result *bool) error {
 			continue
 		}
 
-		// TODO: Reuse RPC client
 		// TODO: Store success / fail results to reduce redundant data transfer in gossip
 		rpcClient := NewDynamoRPCClientFromDynamoNode(preferedDynamoNode)
+		defer rpcClient.CleanConn()
 		if rpcClient.PutRaw(putArgs) {
 			wCount++
 		}
@@ -153,21 +159,10 @@ func (s *DynamoServer) PutRaw(putArgs PutArgs, result *bool) error {
 	vClock := putArgs.Context.Clock
 	value := putArgs.Value
 
-	// TODO: Use fine-grained lock
-	s.objectEntriesMapMutex.Lock()
-	defer s.objectEntriesMapMutex.Unlock()
+	s.localEntriesMap.Lock(key)
+	defer s.localEntriesMap.Unlock(key)
 
-	localEntries, isLocalEntriesExisted := s.objectEntriesMap[key]
-	if !isLocalEntriesExisted {
-		s.objectEntriesMap[key] = []ObjectEntry{
-			ObjectEntry{
-				Context: NewContext(vClock),
-				Value:   value,
-			},
-		}
-		*result = true
-		return nil
-	}
+	localEntries := s.localEntriesMap.Get(key)
 
 	for i := 0; i < len(localEntries); {
 		localEntry := localEntries[i]
@@ -189,7 +184,7 @@ func (s *DynamoServer) PutRaw(putArgs PutArgs, result *bool) error {
 		Value:   value,
 	})
 
-	s.objectEntriesMap[key] = localEntries
+	s.localEntriesMap.Put(key, localEntries)
 
 	*result = true
 	return nil
@@ -217,6 +212,8 @@ func (s *DynamoServer) Get(key string, result *DynamoResult) error {
 
 		// TODO: Reuse RPC client
 		rpcClient := NewDynamoRPCClientFromDynamoNode(preferedDynamoNode)
+		defer rpcClient.CleanConn()
+
 		remoteResult := DynamoResult{EntryList: nil}
 		if rpcClient.GetRaw(key, &remoteResult) {
 			rCount++
@@ -256,13 +253,10 @@ func (s *DynamoServer) GetRaw(key string, result *DynamoResult) error {
 
 	result.EntryList = make([]ObjectEntry, 0)
 
-	// TODO: Use fine-grained lock (Do we need read lock here?)
-	s.objectEntriesMapMutex.Lock()
-	defer s.objectEntriesMapMutex.Unlock()
+	s.localEntriesMap.RLock(key)
+	defer s.localEntriesMap.RUnlock(key)
 
-	if localEntries, ok := s.objectEntriesMap[key]; ok {
-		result.EntryList = append(result.EntryList, localEntries...)
-	}
+	result.EntryList = append(result.EntryList, s.localEntriesMap.Get(key)...)
 
 	return nil
 }
@@ -276,14 +270,13 @@ func NewDynamoServer(w int, r int, hostAddr string, hostPort string, id string) 
 	}
 
 	return DynamoServer{
-		wValue:                w,
-		rValue:                r,
-		preferenceList:        preferenceList,
-		selfNode:              selfNodeInfo,
-		nodeID:                id,
-		objectEntriesMap:      make(map[string][]ObjectEntry),
-		crashTimeout:          time.Now().AddDate(0, 0, -1),
-		objectEntriesMapMutex: &sync.Mutex{},
+		wValue:          w,
+		rValue:          r,
+		preferenceList:  preferenceList,
+		selfNode:        selfNodeInfo,
+		nodeID:          id,
+		localEntriesMap: NewObjectEntriesMap(),
+		crashTimeout:    time.Now().AddDate(0, 0, -1),
 	}
 }
 
