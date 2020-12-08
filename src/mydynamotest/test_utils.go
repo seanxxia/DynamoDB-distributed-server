@@ -47,6 +47,9 @@ func NewServerCoordinator(startingPort int, rValue int, wValue int, clusterSize 
 // Kill the server coordinator process.
 func (s *ServerCoordinator) Kill() {
 	var _ = s.session.Kill().Wait()
+	for _, rpcClient := range s.rpcClientMap {
+		rpcClient.CleanConn()
+	}
 }
 
 // Get the RPC client for the ith server created by server coordinator.
@@ -57,7 +60,7 @@ func (s *ServerCoordinator) GetClient(serverIndex int) *dy.RPCClient {
 
 		retryMax := 3
 		for i := 0; i < retryMax; i++ {
-			err := client.RpcConnect()
+			err := client.CleanAndConn()
 			if err == nil {
 				break
 			}
