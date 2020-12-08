@@ -180,7 +180,7 @@ func NewDynamoRPCClientFromDynamoNode(node DynamoNode) *RPCClient {
 
 	retryMax := 3
 	for i := 0; i < retryMax; i++ {
-		err := client.RpcConnect()
+		err := client.CleanAndConn()
 		if err == nil {
 			break
 		}

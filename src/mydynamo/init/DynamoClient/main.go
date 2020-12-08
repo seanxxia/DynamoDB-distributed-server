@@ -15,7 +15,7 @@ func main() {
 
 	retryMax := 3
 	for i := 0; i < retryMax; i++ {
-		err := clientInstance.RpcConnect()
+		err := clientInstance.CleanAndConn()
 		if err == nil {
 			break
 		}
