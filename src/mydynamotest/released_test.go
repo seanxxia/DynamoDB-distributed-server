@@ -9,6 +9,7 @@ import (
 var _ = Describe("TA Released Tests", func() {
 	// Reference:
 	// - https://piazza.com/class/kfqynl4r6a0317?cid=1074
+	// - https://github.com/ucsd-cse-x24-fa20/module4/blob/main/src/mydynamotest/released_test.go#L76
 
 	Describe("Two Servers", func() {
 
@@ -65,7 +66,7 @@ var _ = Describe("TA Released Tests", func() {
 
 			sc.GetClient(0).Gossip()
 
-			res0 := sc.GetClient(1).Get("s1")
+			res0 := sc.GetClient(0).Get("s1")
 			Expect(res0).NotTo(BeNil())
 			Expect(GetEntryValues(res0)).To(ConsistOf([][]byte{
 				[]byte("abcde"),
