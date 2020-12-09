@@ -2,9 +2,7 @@ package mydynamotest
 
 import (
 	"fmt"
-	"math/rand"
 	"sync"
-	"time"
 
 	dy "mydynamo"
 
@@ -66,9 +64,7 @@ var _ = Describe("Concurrent", func() {
 				go func(i int) {
 					defer GinkgoRecover()
 
-					// Random sleep
-					r := rand.Intn(200)
-					time.Sleep(time.Duration(r) * time.Microsecond)
+					RandomSleep()
 
 					client := sc.MakeNewClient(0)
 					defer client.CleanConn()
@@ -76,7 +72,7 @@ var _ = Describe("Concurrent", func() {
 					res := client.Get("key")
 
 					var putArgs dy.PutArgs
-					if res.EntryList == nil {
+					if len(res.EntryList) == 0 {
 						putArgs = MakePutFreshEntry("key", MakeRandomBytes(RANDOM_DATA_BYTES))
 					} else {
 						entry := res.EntryList[0]
