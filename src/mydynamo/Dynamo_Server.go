@@ -50,16 +50,16 @@ func (s *DynamoServer) Gossip(_ Empty, _ *Empty) error {
 	rpcClientMap := map[DynamoNode]*RPCClient{}
 
 	for _, key := range entryKeys {
-		for _, preferedDynamoNode := range s.preferenceList {
-			if preferedDynamoNode == s.selfNode {
+		for _, preferredDynamoNode := range s.preferenceList {
+			if preferredDynamoNode == s.selfNode {
 				continue
 			}
 
-			if _, ok := rpcClientMap[preferedDynamoNode]; !ok {
-				rpcClient := NewDynamoRPCClientFromDynamoNode(preferedDynamoNode)
+			if _, ok := rpcClientMap[preferredDynamoNode]; !ok {
+				rpcClient := NewDynamoRPCClientFromDynamoNode(preferredDynamoNode)
 				defer rpcClient.CleanConn()
 
-				rpcClientMap[preferedDynamoNode] = rpcClient
+				rpcClientMap[preferredDynamoNode] = rpcClient
 			}
 
 			s.localEntriesMap.RLock(key)
@@ -73,7 +73,7 @@ func (s *DynamoServer) Gossip(_ Empty, _ *Empty) error {
 					Value:   localEntry.Value,
 				}
 
-				rpcClientMap[preferedDynamoNode].PutRaw(putArgs)
+				rpcClientMap[preferredDynamoNode].PutRaw(putArgs)
 			}
 		}
 	}
@@ -127,16 +127,16 @@ func (s *DynamoServer) Put(putArgs PutArgs, result *bool) error {
 	}
 
 	wCount := 1
-	for _, preferedDynamoNode := range s.preferenceList {
+	for _, preferredDynamoNode := range s.preferenceList {
 		if wCount >= s.wValue {
 			break
 		}
-		if preferedDynamoNode == s.selfNode {
+		if preferredDynamoNode == s.selfNode {
 			continue
 		}
 
 		// TODO: Store success / fail results to reduce redundant data transfer in gossip
-		rpcClient := NewDynamoRPCClientFromDynamoNode(preferedDynamoNode)
+		rpcClient := NewDynamoRPCClientFromDynamoNode(preferredDynamoNode)
 		defer rpcClient.CleanConn()
 		if rpcClient.PutRaw(putArgs) {
 			wCount++
@@ -203,16 +203,16 @@ func (s *DynamoServer) Get(key string, result *DynamoResult) error {
 	}
 
 	rCount := 1
-	for _, preferedDynamoNode := range s.preferenceList {
+	for _, preferredDynamoNode := range s.preferenceList {
 		if rCount >= s.rValue {
 			break
 		}
-		if preferedDynamoNode == s.selfNode {
+		if preferredDynamoNode == s.selfNode {
 			continue
 		}
 
 		// TODO: Reuse RPC client
-		rpcClient := NewDynamoRPCClientFromDynamoNode(preferedDynamoNode)
+		rpcClient := NewDynamoRPCClientFromDynamoNode(preferredDynamoNode)
 		defer rpcClient.CleanConn()
 
 		remoteResult := DynamoResult{EntryList: nil}
