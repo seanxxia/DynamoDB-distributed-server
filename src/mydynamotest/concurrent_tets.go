@@ -226,6 +226,7 @@ var _ = Describe("Concurrent", func() {
 								putArgs = MakePutFreshEntry(key, MakeRandomBytes(randomBytesNum))
 							} else {
 								entry := res.EntryList[0]
+								entry.Context.Clock.Combine(GetEntryContextClocks(res))
 								entry.Value = MakeRandomBytes(randomBytesNum)
 								putArgs = MakePutFromEntry(key, entry)
 							}
