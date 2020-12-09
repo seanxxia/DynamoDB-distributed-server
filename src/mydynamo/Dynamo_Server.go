@@ -56,7 +56,7 @@ func (s *DynamoServer) Gossip(_ Empty, _ *Empty) error {
 			}
 
 			if _, ok := rpcClientMap[preferredDynamoNode]; !ok {
-				rpcClient := NewDynamoRPCClientFromDynamoNode(preferredDynamoNode)
+				rpcClient := NewDynamoRPCClientFromDynamoNodeAndConnect(preferredDynamoNode)
 				defer rpcClient.CleanConn()
 
 				rpcClientMap[preferredDynamoNode] = rpcClient
@@ -136,7 +136,7 @@ func (s *DynamoServer) Put(putArgs PutArgs, result *bool) error {
 		}
 
 		// TODO: Store success / fail results to reduce redundant data transfer in gossip
-		rpcClient := NewDynamoRPCClientFromDynamoNode(preferredDynamoNode)
+		rpcClient := NewDynamoRPCClientFromDynamoNodeAndConnect(preferredDynamoNode)
 		defer rpcClient.CleanConn()
 		if rpcClient.PutRaw(putArgs) {
 			wCount++
@@ -213,7 +213,7 @@ func (s *DynamoServer) Get(key string, result *DynamoResult) error {
 		}
 
 		// TODO: Reuse RPC client
-		rpcClient := NewDynamoRPCClientFromDynamoNode(preferredDynamoNode)
+		rpcClient := NewDynamoRPCClientFromDynamoNodeAndConnect(preferredDynamoNode)
 		defer rpcClient.CleanConn()
 
 		remoteResult := DynamoResult{EntryList: nil}

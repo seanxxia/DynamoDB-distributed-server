@@ -174,8 +174,8 @@ func NewDynamoRPCClient(serverAddr string) *RPCClient {
 	}
 }
 
-//Creates a new DynamoRPCClient from DynamoNode (address and port)
-func NewDynamoRPCClientFromDynamoNode(node DynamoNode) *RPCClient {
+//Creates a new DynamoRPCClient from DynamoNode (address and port) and establishes the RPC connection
+func NewDynamoRPCClientFromDynamoNodeAndConnect(node DynamoNode) *RPCClient {
 	client := NewDynamoRPCClient(node.Address + ":" + node.Port)
 
 	retryMax := 3
