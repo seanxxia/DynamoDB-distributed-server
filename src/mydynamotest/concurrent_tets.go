@@ -122,9 +122,9 @@ var _ = Describe("Concurrent", func() {
 		It("should handle concurrent put and gossip", func(done Done) {
 			var wg sync.WaitGroup
 
-			expectedEntryValue := make([][]byte, 0, serverNum)
+			expectedEntryValues := make([][]byte, 0, serverNum)
 			for i := 0; i < serverNum; i++ {
-				expectedEntryValue = append(expectedEntryValue, MakeRandomBytes(RANDOM_DATA_BYTES))
+				expectedEntryValues = append(expectedEntryValues, MakeRandomBytes(RANDOM_DATA_BYTES))
 			}
 
 			wg.Add(serverNum)
@@ -134,7 +134,7 @@ var _ = Describe("Concurrent", func() {
 
 					client := sc.MakeNewClient(serverID)
 					defer client.CleanConn()
-					client.Put(MakePutFreshEntry("key", expectedEntryValue[serverID]))
+					client.Put(MakePutFreshEntry("key", expectedEntryValues[serverID]))
 
 					for i := 0; i < 10; i++ {
 						client.Gossip()
@@ -154,7 +154,7 @@ var _ = Describe("Concurrent", func() {
 
 					res := client.Get("key")
 					Expect(res).NotTo(BeNil())
-					Expect(GetEntryValues(res)).To(ConsistOf(expectedEntryValue))
+					Expect(GetEntryValues(res)).To(ConsistOf(expectedEntryValues))
 
 					wg.Done()
 				}(serverID)
