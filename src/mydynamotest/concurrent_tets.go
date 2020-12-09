@@ -163,5 +163,89 @@ var _ = Describe("Concurrent", func() {
 
 			close(done)
 		}, 20.0)
+
+		It("should not deadline and handle concurrent get, put, and gossip.", func(done Done) {
+			const operationNum = 10
+
+			var wg sync.WaitGroup
+			wg.Add(CONCURRENT_CLIENTS_NUM * serverNum * 3)
+
+			// Getters
+			for clientID := 0; clientID < CONCURRENT_CLIENTS_NUM; clientID++ {
+				for serverID := 0; serverID < serverNum; serverID++ {
+					go func(clientID int, serverID int) {
+						defer GinkgoRecover()
+
+						client := sc.MakeNewClient(serverID)
+						defer client.CleanConn()
+
+						for opi := 0; operationNum < 10; opi++ {
+							RandomSleep()
+
+							// Do get
+							key := fmt.Sprintf("key-%d", clientID)
+							res := client.Get(key)
+							Expect(res).NotTo(BeNil())
+						}
+						wg.Done()
+					}(clientID, serverID)
+				}
+			}
+
+			// Putters
+			for clientID := 0; clientID < CONCURRENT_CLIENTS_NUM; clientID++ {
+				for serverID := 0; serverID < serverNum; serverID++ {
+					go func(clientID int, serverID int) {
+						defer GinkgoRecover()
+
+						client := sc.MakeNewClient(serverID)
+						defer client.CleanConn()
+
+						for opi := 0; operationNum < 10; opi++ {
+							RandomSleep()
+
+							// Do get and put
+							key := fmt.Sprintf("key-%d", clientID)
+
+							res := client.Get(key)
+							var putArgs dy.PutArgs
+							if len(res.EntryList) == 0 {
+								putArgs = MakePutFreshEntry(key, MakeRandomBytes(RANDOM_DATA_BYTES))
+							} else {
+								entry := res.EntryList[0]
+								entry.Value = MakeRandomBytes(RANDOM_DATA_BYTES)
+								putArgs = MakePutFromEntry(key, entry)
+							}
+
+							client.Put(putArgs)
+						}
+						wg.Done()
+					}(clientID, serverID)
+				}
+			}
+
+			// Gossiper
+			for clientID := 0; clientID < CONCURRENT_CLIENTS_NUM; clientID++ {
+				for serverID := 0; serverID < serverNum; serverID++ {
+					go func(clientID int, serverID int) {
+						defer GinkgoRecover()
+
+						client := sc.MakeNewClient(serverID)
+						defer client.CleanConn()
+
+						for opi := 0; operationNum < 10; opi++ {
+							RandomSleep()
+
+							// Do get and put
+							client.Gossip()
+						}
+						wg.Done()
+					}(clientID, serverID)
+				}
+			}
+
+			wg.Wait()
+			close(done)
+		}, 60.0)
 	})
 })
