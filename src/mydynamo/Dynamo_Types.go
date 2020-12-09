@@ -55,8 +55,8 @@ func NewObjectEntriesMap() ObjectEntriesMap {
 
 // Get the keys of entries in the map
 func (m *ObjectEntriesMap) GetKeys() []string {
-	m.entriesMapMutex.RLock()
-	defer m.entriesMapMutex.RUnlock()
+	m.entriesMapMutex.Lock()
+	defer m.entriesMapMutex.Unlock()
 
 	keys := make([]string, 0, len(*m.entriesMap))
 	for key := range *m.entriesMap {
@@ -67,8 +67,8 @@ func (m *ObjectEntriesMap) GetKeys() []string {
 
 // Get the entries associated with the given key
 func (m *ObjectEntriesMap) Get(key string) []ObjectEntry {
-	m.entriesMapMutex.RLock()
-	defer m.entriesMapMutex.RUnlock()
+	m.entriesMapMutex.Lock()
+	defer m.entriesMapMutex.Unlock()
 
 	var entries []ObjectEntry
 	var ok bool

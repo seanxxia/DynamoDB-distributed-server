@@ -16,7 +16,7 @@ import (
 const RANDOM_DATA_BYTES int = 1024
 const CONCURRENT_CLIENTS_NUM int = 100
 
-var _ = FDescribe("Concurrent", func() {
+var _ = Describe("Concurrent", func() {
 
 	Describe("Single Server", func() {
 		var sc ServerCoordinator
@@ -106,13 +106,13 @@ var _ = FDescribe("Concurrent", func() {
 		}, 20.0)
 	})
 
-	Describe("Multiple Server", func() {
+	Describe("Multiple Servers", func() {
 		var sc ServerCoordinator
-		const serverNum = 3
+		const serverNum = 10
 
 		BeforeEach(func() {
-			// StartingPort: 8000, R-Value: 10, W-Value: 10, ClusterSize: 100
-			sc = NewServerCoordinator(8000+config.GinkgoConfig.ParallelNode*100, 2, 2, serverNum)
+			// StartingPort: 8000, R-Value: 5, W-Value: 5, ClusterSize: 10
+			sc = NewServerCoordinator(8000+config.GinkgoConfig.ParallelNode*100, 5, 5, serverNum)
 		})
 
 		AfterEach(func() {
@@ -124,7 +124,7 @@ var _ = FDescribe("Concurrent", func() {
 
 			expectedEntryValue := make([][]byte, 0, serverNum)
 			for i := 0; i < serverNum; i++ {
-				expectedEntryValue = append(expectedEntryValue, MakeRandomBytes(10))
+				expectedEntryValue = append(expectedEntryValue, MakeRandomBytes(RANDOM_DATA_BYTES))
 			}
 
 			wg.Add(serverNum)
@@ -136,7 +136,7 @@ var _ = FDescribe("Concurrent", func() {
 					defer client.CleanConn()
 					client.Put(MakePutFreshEntry("key", expectedEntryValue[serverID]))
 
-					for i := 0; i < 3; i++ {
+					for i := 0; i < 10; i++ {
 						client.Gossip()
 					}
 					wg.Done()

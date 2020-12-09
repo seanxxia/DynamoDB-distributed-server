@@ -64,6 +64,8 @@ func (s *DynamoServer) Gossip(_ Empty, _ *Empty) error {
 
 			s.localEntriesMap.RLock(key)
 			localEntries := s.localEntriesMap.Get(key)
+			s.localEntriesMap.RUnlock(key)
+
 			for _, localEntry := range localEntries {
 				putArgs := PutArgs{
 					Key:     key,
@@ -73,7 +75,6 @@ func (s *DynamoServer) Gossip(_ Empty, _ *Empty) error {
 
 				rpcClientMap[preferedDynamoNode].PutRaw(putArgs)
 			}
-			s.localEntriesMap.RUnlock(key)
 		}
 	}
 	return nil
