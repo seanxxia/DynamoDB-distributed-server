@@ -178,7 +178,7 @@ var _ = Describe("Concurrent", func() {
 		})
 
 		It("should not deadlock and handle concurrent get, put, and gossip.", func(done Done) {
-			const operationNum = 10
+			const operationNum = 30
 
 			var wg sync.WaitGroup
 			wg.Add(concurrentClientsNum * serverNum * 3)
