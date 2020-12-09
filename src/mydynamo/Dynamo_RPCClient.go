@@ -53,7 +53,9 @@ func (dynamoClient *RPCClient) CleanAndConn() error {
 		}
 	}
 
-	return dynamoClient.RpcConnect()
+	dynamoClient.rpcConn = nil
+	e = dynamoClient.RpcConnect()
+	return e
 }
 
 //Puts a value to the server.
@@ -178,11 +180,8 @@ func NewDynamoRPCClient(serverAddr string) *RPCClient {
 func NewDynamoRPCClientFromDynamoNodeAndConnect(node DynamoNode) *RPCClient {
 	client := NewDynamoRPCClient(node.Address + ":" + node.Port)
 
-	for i := 0; i < RPC_CLIENT_CONNECT_RETRY_MAX; i++ {
-		err := client.CleanAndConn()
-		if err == nil {
-			break
-		}
+	if err := client.CleanAndConn(); err != nil {
+		panic(err)
 	}
 	return client
 }
