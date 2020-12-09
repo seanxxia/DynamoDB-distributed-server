@@ -11,14 +11,13 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-const RANDOM_DATA_BYTES int = 1024
-const CONCURRENT_CLIENTS_NUM int = 100
-
 var _ = Describe("Concurrent", func() {
 
 	Describe("Single Server", func() {
-		var sc ServerCoordinator
+		const randomBytesNum int = 1024
+		const concurrentClientsNum int = 100
 
+		var sc ServerCoordinator
 		BeforeEach(func() {
 			// StartingPort: 8000, R-Value: 1, W-Value: 1, ClusterSize: 1
 			sc = NewServerCoordinator(8000+config.GinkgoConfig.ParallelNode*100, 1, 1, 1)
@@ -31,8 +30,8 @@ var _ = Describe("Concurrent", func() {
 		It("should handle concurrent entries put with different keys.", func(done Done) {
 			var wg sync.WaitGroup
 
-			wg.Add(CONCURRENT_CLIENTS_NUM)
-			for i := 0; i < CONCURRENT_CLIENTS_NUM; i++ {
+			wg.Add(concurrentClientsNum)
+			for i := 0; i < concurrentClientsNum; i++ {
 				go func(i int) {
 					defer GinkgoRecover()
 
@@ -40,7 +39,7 @@ var _ = Describe("Concurrent", func() {
 					defer client.CleanConn()
 
 					key := fmt.Sprintf("k%d", i)
-					value := MakeRandomBytes(RANDOM_DATA_BYTES)
+					value := MakeRandomBytes(randomBytesNum)
 					client.Put(MakePutFreshEntry(key, value))
 
 					res := client.Get(key)
@@ -59,8 +58,8 @@ var _ = Describe("Concurrent", func() {
 		It("should handle concurrent entries put with the same key.", func(done Done) {
 			var wg sync.WaitGroup
 
-			wg.Add(CONCURRENT_CLIENTS_NUM)
-			for i := 0; i < CONCURRENT_CLIENTS_NUM; i++ {
+			wg.Add(concurrentClientsNum)
+			for i := 0; i < concurrentClientsNum; i++ {
 				go func(i int) {
 					defer GinkgoRecover()
 
@@ -73,10 +72,10 @@ var _ = Describe("Concurrent", func() {
 
 					var putArgs dy.PutArgs
 					if len(res.EntryList) == 0 {
-						putArgs = MakePutFreshEntry("key", MakeRandomBytes(RANDOM_DATA_BYTES))
+						putArgs = MakePutFreshEntry("key", MakeRandomBytes(randomBytesNum))
 					} else {
 						entry := res.EntryList[0]
-						entry.Value = MakeRandomBytes(RANDOM_DATA_BYTES)
+						entry.Value = MakeRandomBytes(randomBytesNum)
 						putArgs = MakePutFromEntry("key", entry)
 					}
 
@@ -87,7 +86,7 @@ var _ = Describe("Concurrent", func() {
 			wg.Wait()
 
 			// Ignore all the previously put entries, get and put a new entry here
-			value := MakeRandomBytes(RANDOM_DATA_BYTES)
+			value := MakeRandomBytes(randomBytesNum)
 
 			res := sc.GetClient(0).Get("key")
 			entry := res.EntryList[0]
@@ -103,9 +102,11 @@ var _ = Describe("Concurrent", func() {
 	})
 
 	Describe("Multiple Servers", func() {
-		var sc ServerCoordinator
-		const serverNum = 10
+		const serverNum int = 10
+		const randomBytesNum int = 1024
+		// const concurrentClientsNum int = 100
 
+		var sc ServerCoordinator
 		BeforeEach(func() {
 			// StartingPort: 8000, R-Value: 5, W-Value: 5, ClusterSize: 10
 			sc = NewServerCoordinator(8000+config.GinkgoConfig.ParallelNode*100, 5, 5, serverNum)
@@ -120,7 +121,7 @@ var _ = Describe("Concurrent", func() {
 
 			expectedEntryValues := make([][]byte, 0, serverNum)
 			for i := 0; i < serverNum; i++ {
-				expectedEntryValues = append(expectedEntryValues, MakeRandomBytes(RANDOM_DATA_BYTES))
+				expectedEntryValues = append(expectedEntryValues, MakeRandomBytes(randomBytesNum))
 			}
 
 			wg.Add(serverNum)
@@ -159,15 +160,31 @@ var _ = Describe("Concurrent", func() {
 
 			close(done)
 		}, 20.0)
+	})
 
-		It("should not deadline and handle concurrent get, put, and gossip.", func(done Done) {
+	Describe("Multiple Servers: Exhausting", func() {
+		const serverNum int = 5
+		const randomBytesNum int = 512
+		const concurrentClientsNum int = 20
+
+		var sc ServerCoordinator
+		BeforeEach(func() {
+			// StartingPort: 8000, R-Value: 5, W-Value: 5, ClusterSize: 10
+			sc = NewServerCoordinator(8000+config.GinkgoConfig.ParallelNode*100, 2, 2, serverNum)
+		})
+
+		AfterEach(func() {
+			sc.Kill()
+		})
+
+		It("should not deadlock and handle concurrent get, put, and gossip.", func(done Done) {
 			const operationNum = 10
 
 			var wg sync.WaitGroup
-			wg.Add(CONCURRENT_CLIENTS_NUM * serverNum * 3)
+			wg.Add(concurrentClientsNum * serverNum * 3)
 
 			// Getters
-			for clientID := 0; clientID < CONCURRENT_CLIENTS_NUM; clientID++ {
+			for clientID := 0; clientID < concurrentClientsNum; clientID++ {
 				for serverID := 0; serverID < serverNum; serverID++ {
 					go func(clientID int, serverID int) {
 						defer GinkgoRecover()
@@ -175,7 +192,7 @@ var _ = Describe("Concurrent", func() {
 						client := sc.MakeNewClient(serverID)
 						defer client.CleanConn()
 
-						for opi := 0; operationNum < 10; opi++ {
+						for opi := 0; opi < operationNum; opi++ {
 							RandomSleep()
 
 							// Do get
@@ -189,7 +206,7 @@ var _ = Describe("Concurrent", func() {
 			}
 
 			// Putters
-			for clientID := 0; clientID < CONCURRENT_CLIENTS_NUM; clientID++ {
+			for clientID := 0; clientID < concurrentClientsNum; clientID++ {
 				for serverID := 0; serverID < serverNum; serverID++ {
 					go func(clientID int, serverID int) {
 						defer GinkgoRecover()
@@ -197,7 +214,7 @@ var _ = Describe("Concurrent", func() {
 						client := sc.MakeNewClient(serverID)
 						defer client.CleanConn()
 
-						for opi := 0; operationNum < 10; opi++ {
+						for opi := 0; opi < operationNum; opi++ {
 							RandomSleep()
 
 							// Do get and put
@@ -206,10 +223,10 @@ var _ = Describe("Concurrent", func() {
 							res := client.Get(key)
 							var putArgs dy.PutArgs
 							if len(res.EntryList) == 0 {
-								putArgs = MakePutFreshEntry(key, MakeRandomBytes(RANDOM_DATA_BYTES))
+								putArgs = MakePutFreshEntry(key, MakeRandomBytes(randomBytesNum))
 							} else {
 								entry := res.EntryList[0]
-								entry.Value = MakeRandomBytes(RANDOM_DATA_BYTES)
+								entry.Value = MakeRandomBytes(randomBytesNum)
 								putArgs = MakePutFromEntry(key, entry)
 							}
 
@@ -221,7 +238,7 @@ var _ = Describe("Concurrent", func() {
 			}
 
 			// Gossiper
-			for clientID := 0; clientID < CONCURRENT_CLIENTS_NUM; clientID++ {
+			for clientID := 0; clientID < concurrentClientsNum; clientID++ {
 				for serverID := 0; serverID < serverNum; serverID++ {
 					go func(clientID int, serverID int) {
 						defer GinkgoRecover()
@@ -229,10 +246,10 @@ var _ = Describe("Concurrent", func() {
 						client := sc.MakeNewClient(serverID)
 						defer client.CleanConn()
 
-						for opi := 0; operationNum < 10; opi++ {
+						for opi := 0; opi < operationNum; opi++ {
 							RandomSleep()
 
-							// Do get and put
+							// Do gossip
 							client.Gossip()
 						}
 						wg.Done()
