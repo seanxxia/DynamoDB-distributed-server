@@ -178,6 +178,6 @@ func MakeRandomBytes(length int) []byte {
 
 // Make the thread sleep for a random time
 func RandomSleep() {
-	r := rand.Intn(500)
+	r := rand.Intn(200)
 	time.Sleep(time.Duration(r) * time.Millisecond)
 }
