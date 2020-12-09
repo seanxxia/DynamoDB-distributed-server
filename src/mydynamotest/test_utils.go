@@ -1,7 +1,7 @@
 package mydynamotest
 
 import (
-	"crypto/rand"
+	"math/rand"
 	dy "mydynamo"
 	"os/exec"
 	"strconv"
@@ -174,4 +174,10 @@ func MakeRandomBytes(length int) []byte {
 	}
 
 	return data
+}
+
+// Make the thread sleep for a random time
+func RandomSleep() {
+	r := rand.Intn(500)
+	time.Sleep(time.Duration(r) * time.Millisecond)
 }
