@@ -165,19 +165,20 @@ func (s *DynamoServer) PutRaw(putArgs PutArgs, result *bool) error {
 
 	localEntries := s.localEntriesMap.Get(key)
 
-	for i := 0; i < len(localEntries); {
-		localEntry := localEntries[i]
+	indicesToRemove := make([]int, 0)
+	for i, localEntry := range localEntries {
 		if vClock.LessThan(localEntry.Context.Clock) || vClock.Equals(localEntry.Context.Clock) {
 			*result = true
 			return nil
 		}
 
 		if localEntry.Context.Clock.LessThan(vClock) {
-			localEntries = remove(localEntries, i)
-		} else {
-			// vClock.Concurrent(localEntry.Context.Clock) == true
-			i++
+			indicesToRemove = append(indicesToRemove, i)
 		}
+	}
+
+	for i := len(indicesToRemove) - 1; i >= 0; i-- {
+		localEntries = remove(localEntries, indicesToRemove[i])
 	}
 
 	localEntries = append(localEntries, ObjectEntry{
@@ -221,7 +222,6 @@ func (s *DynamoServer) Get(key string, result *DynamoResult) error {
 
 			// Iterate over remote entries and add concurrent entries to result
 			// TODO: Improve performance
-
 			for _, remoteEntry := range remoteResult.EntryList {
 				isRemoteEntryConcurrent := true
 				indicesToRemove := make([]int, 0)
