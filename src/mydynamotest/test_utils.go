@@ -167,6 +167,11 @@ func MapTestCases(testCases [][]string, f func(i int, c []string)) {
 // Make random byte array with give length
 func MakeRandomBytes(length int) []byte {
 	data := make([]byte, length)
-	rand.Read(data)
+	if n, err := rand.Read(data); err != nil {
+		for i := n; i < length; i++ {
+			data[i] = 0
+		}
+	}
+
 	return data
 }
