@@ -11,7 +11,7 @@
     "test:no-build": "GOPATH=${PWD} PATH=$PATH:${PWD}/bin ./run-test.sh",
     "format": "gofmt -w src/mydynamo src/mydynamotest",
     "lint": "GOPATH=${PWD} ./run-lint.sh",
-    "kill-port:test": "node ./kill-test-ports.js"
+    "kill:test": "node ./kill-test-ports.js"
   },
   "repository": {
     "type": "git",
