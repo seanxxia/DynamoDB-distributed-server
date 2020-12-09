@@ -1,6 +1,7 @@
 package mydynamotest
 
 import (
+	"math/rand"
 	dy "mydynamo"
 	"os/exec"
 	"strconv"
@@ -69,6 +70,21 @@ func (s *ServerCoordinator) GetClient(serverIndex int) *dy.RPCClient {
 	}
 
 	return s.rpcClientMap[serverIndex]
+}
+
+// Make a new RPC client for the ith server created by server coordinator.
+// The port for the server is computed by `s.StartingPort + serverIndex`.
+func (s *ServerCoordinator) MakeNewClient(serverIndex int) *dy.RPCClient {
+	client := dy.NewDynamoRPCClient("localhost:" + strconv.Itoa(s.StartingPort+serverIndex))
+
+	retryMax := 3
+	for i := 0; i < retryMax; i++ {
+		err := client.CleanAndConn()
+		if err == nil {
+			break
+		}
+	}
+	return client
 }
 
 // Get the server ID (nodeID) for the ith server created by server coordinator.
@@ -146,4 +162,22 @@ func MapTestCases(testCases [][]string, f func(i int, c []string)) {
 	for i, testCase := range testCases {
 		f(i, testCase)
 	}
+}
+
+// Make random byte array with give length
+func MakeRandomBytes(length int) []byte {
+	data := make([]byte, length)
+	if n, err := rand.Read(data); err != nil {
+		for i := n; i < length; i++ {
+			data[i] = 0
+		}
+	}
+
+	return data
+}
+
+// Make the thread sleep for a random time
+func RandomSleep() {
+	r := rand.Intn(200)
+	time.Sleep(time.Duration(r) * time.Millisecond)
 }

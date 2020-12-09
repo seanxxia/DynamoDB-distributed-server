@@ -10,7 +10,8 @@
     "test": "npm run build && npm run test:no-build",
     "test:no-build": "GOPATH=${PWD} PATH=$PATH:${PWD}/bin ./run-test.sh",
     "format": "gofmt -w src/mydynamo src/mydynamotest",
-    "lint": "GOPATH=${PWD} ./run-lint.sh"
+    "lint": "GOPATH=${PWD} ./run-lint.sh",
+    "kill:test": "node ./kill-test-ports.js"
   },
   "repository": {
     "type": "git",
@@ -21,5 +22,8 @@
   "bugs": {
     "url": "https://github.com/ucsd-cse-x24-fa20/module-4-project-cse224-chan-xia/issues"
   },
-  "homepage": "https://github.com/ucsd-cse-x24-fa20/module-4-project-cse224-chan-xia#readme"
+  "homepage": "https://github.com/ucsd-cse-x24-fa20/module-4-project-cse224-chan-xia#readme",
+  "devDependencies": {
+    "fkill": "^7.0.1"
+  }
 }
