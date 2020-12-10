@@ -133,7 +133,7 @@ func NewPutRecord(key string, context Context) PutRecord {
 // Data structure to store the information if a server (DynamoNode) saw a PutArg (PutRecord) before
 type DynamoNodePutRecords struct {
 	putRecordSeenNodes      *map[PutRecord](*map[DynamoNode]bool)
-	putRecordSeenNodesMutex *sync.Mutex
+	putRecordSeenNodesMutex *sync.RWMutex
 	mu                      *sync.Mutex
 }
 
@@ -141,7 +141,7 @@ type DynamoNodePutRecords struct {
 func NewDynamoNodePutRecords() DynamoNodePutRecords {
 	return DynamoNodePutRecords{
 		putRecordSeenNodes:      &map[PutRecord](*map[DynamoNode]bool){},
-		putRecordSeenNodesMutex: &sync.Mutex{},
+		putRecordSeenNodesMutex: &sync.RWMutex{},
 		mu:                      &sync.Mutex{},
 	}
 }
@@ -172,8 +172,8 @@ func (r *DynamoNodePutRecords) DeletePutRecord(putRecord PutRecord) {
 
 // Return true if the given server (DynamoNode) saw the PutArg (PutRecord) before
 func (r *DynamoNodePutRecords) CheckPutRecordInNode(putRecord PutRecord, node DynamoNode) bool {
-	r.putRecordSeenNodesMutex.Lock()
-	defer r.putRecordSeenNodesMutex.Unlock()
+	r.putRecordSeenNodesMutex.RLock()
+	defer r.putRecordSeenNodesMutex.RUnlock()
 
 	if seenNodes, ok := (*r.putRecordSeenNodes)[putRecord]; ok {
 		_, seen := (*seenNodes)[node]
