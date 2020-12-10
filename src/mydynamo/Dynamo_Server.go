@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"net/rpc"
+	"sync"
 	"time"
 )
 
@@ -17,12 +18,16 @@ type DynamoServer struct {
 	selfNode        DynamoNode   //This node's address and port info
 	nodeID          string       //ID of this node
 	localEntriesMap ObjectEntriesMap
-	crashTimeout    time.Time
+	isCrashed       bool
+	isCrashedMutex  *sync.RWMutex
 }
 
 // Returns error if the server is in crash state, otherwise nil
 func (s *DynamoServer) checkCrashed() error {
-	if time.Now().Before(s.crashTimeout) {
+	s.isCrashedMutex.RLock()
+	defer s.isCrashedMutex.RUnlock()
+
+	if s.isCrashed {
 		return errors.New("Server is crashed")
 	}
 
@@ -88,22 +93,38 @@ func (s *DynamoServer) Crash(seconds int, success *bool) error {
 		return err
 	}
 
-	s.crashTimeout = time.Now().Add(time.Second * time.Duration(seconds))
+	s.isCrashedMutex.Lock()
+	s.isCrashed = true
+	s.isCrashedMutex.Unlock()
+
+	go func(seconds int) {
+		time.Sleep(time.Duration(seconds) * time.Second)
+
+		s.isCrashedMutex.Lock()
+		defer s.isCrashedMutex.Unlock()
+
+		s.isCrashed = false
+	}(seconds)
+
 	*success = true
 	return nil
 }
 
 // Makes server unavailable forever
 func (s *DynamoServer) ForceCrash(_ Empty, _ *Empty) error {
-	// Set server.crashTimeout to a long time after now (3 years)
-	s.crashTimeout = time.Now().AddDate(3, 0, 0)
+	s.isCrashedMutex.Lock()
+	defer s.isCrashedMutex.Unlock()
+
+	s.isCrashed = true
 	return nil
 }
 
 // Makes server available
 func (s *DynamoServer) ForceRestore(_ Empty, _ *Empty) error {
-	// Set server.crashTimeout to a time before now (1 day before)
-	s.crashTimeout = time.Now().AddDate(0, 0, -1)
+	s.isCrashedMutex.Lock()
+	defer s.isCrashedMutex.Unlock()
+
+	s.isCrashed = false
 	return nil
 }
 
@@ -277,7 +298,8 @@ func NewDynamoServer(w int, r int, hostAddr string, hostPort string, id string) 
 		selfNode:        selfNodeInfo,
 		nodeID:          id,
 		localEntriesMap: NewObjectEntriesMap(),
-		crashTimeout:    time.Now().AddDate(0, 0, -1),
+		isCrashed:       false,
+		isCrashedMutex:  &sync.RWMutex{},
 	}
 }
 
