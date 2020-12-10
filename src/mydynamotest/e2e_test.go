@@ -95,7 +95,7 @@ var _ = Describe("End-to-End", func() {
 		})
 
 		It("should get avaible servers (skip unavaible servers).", func() {
-			for idx := 0; idx < 5; idx++ {
+			for idx := 0; idx < 9; idx++ {
 				sc.GetClient(idx).Put(MakePutFreshEntry("k0", []byte("v"+strconv.Itoa(idx))))
 			}
 			sc.GetClient(3).ForceCrash()
@@ -107,6 +107,8 @@ var _ = Describe("End-to-End", func() {
 				[]byte("v0"),
 				[]byte("v1"),
 				[]byte("v2"),
+				[]byte("v5"),
+				[]byte("v6"),
 			}))
 
 		})
@@ -194,6 +196,8 @@ var _ = Describe("End-to-End", func() {
 
 			sc.GetClient(2).ForceRestore()
 
+			sc.GetClient(0).ForceCrash()
+			sc.GetClient(1).ForceCrash()
 			sc.GetClient(3).ForceCrash()
 			sc.GetClient(4).ForceCrash()
 
@@ -201,6 +205,22 @@ var _ = Describe("End-to-End", func() {
 			Expect(res2).NotTo(BeNil())
 			Expect(GetEntryValues(res2)).To(ConsistOf([][]byte{
 				[]byte("v0"),
+			}))
+
+			sc.GetClient(0).ForceRestore()
+			sc.GetClient(1).ForceRestore()
+			sc.GetClient(3).ForceRestore()
+			sc.GetClient(4).ForceRestore()
+
+			entry2 := res2.EntryList[0]
+			entry2.Value = []byte("v2")
+			sc.GetClient(2).Put(MakePutFromEntry("k0", entry2))
+
+			res2 = sc.GetClient(2).Get("k0")
+			Expect(res2).NotTo(BeNil())
+			Expect(GetEntryValues(res2)).To(ConsistOf([][]byte{
+				[]byte("v1"),
+				[]byte("v2"),
 			}))
 
 		})
