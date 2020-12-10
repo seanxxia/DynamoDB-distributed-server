@@ -167,9 +167,7 @@ func (r *DynamoNodePutRecords) DeletePutRecord(putRecord PutRecord) {
 	r.putRecordSeenNodesMutex.Lock()
 	defer r.putRecordSeenNodesMutex.Unlock()
 
-	if _, ok := (*r.putRecordSeenNodes)[putRecord]; ok {
-		delete(*r.putRecordSeenNodes, putRecord)
-	}
+	delete(*r.putRecordSeenNodes, putRecord)
 }
 
 // Return true if the given server (DynamoNode) saw the PutArg (PutRecord) before
@@ -186,18 +184,18 @@ func (r *DynamoNodePutRecords) CheckPutRecordInNode(putRecord PutRecord, node Dy
 }
 
 // Lock the DynamoNodePutRecords for writing
-func (r *DynamoNodePutRecords) Lock() {
+func (r *DynamoNodePutRecords) WLock() {
 	r.mu.Lock()
 }
 
 // Unlock the DynamoNodePutRecords for writing
-func (r *DynamoNodePutRecords) Unlock() {
+func (r *DynamoNodePutRecords) WUnlock() {
 	r.mu.Unlock()
 }
 
 // Execute the given function with the DynamoNodePutRecords be locked for writing
 func (r *DynamoNodePutRecords) ExecAtomic(f func()) {
-	r.Lock()
+	r.WLock()
 	f()
-	r.Unlock()
+	r.WUnlock()
 }
