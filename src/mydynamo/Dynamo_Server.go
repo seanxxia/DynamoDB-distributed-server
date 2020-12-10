@@ -97,14 +97,13 @@ func (s *DynamoServer) Crash(seconds int, success *bool) error {
 	s.isCrashed = true
 	s.isCrashedMutex.Unlock()
 
-	go func(seconds int) {
+	go func() {
 		time.Sleep(time.Duration(seconds) * time.Second)
 
 		s.isCrashedMutex.Lock()
-		defer s.isCrashedMutex.Unlock()
-
 		s.isCrashed = false
-	}(seconds)
+		s.isCrashedMutex.Unlock()
+	}()
 
 	*success = true
 	return nil
