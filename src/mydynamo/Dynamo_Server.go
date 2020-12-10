@@ -144,8 +144,6 @@ func (s *DynamoServer) Put(putArgs PutArgs, result *bool) error {
 		return err
 	}
 
-	putRecord := NewPutRecord(putArgs.Key, putArgs.Context)
-
 	wCount := 1
 	successfullyPutNodes := make([]DynamoNode, 0)
 	for _, preferredDynamoNode := range s.preferenceList {
@@ -156,7 +154,6 @@ func (s *DynamoServer) Put(putArgs PutArgs, result *bool) error {
 			continue
 		}
 
-		// TODO: Store success / fail results to reduce redundant data transfer in gossip
 		rpcClient := NewDynamoRPCClientFromDynamoNodeAndConnect(preferredDynamoNode)
 		defer rpcClient.CleanConn()
 		if rpcClient.PutRaw(putArgs) {
@@ -166,6 +163,7 @@ func (s *DynamoServer) Put(putArgs PutArgs, result *bool) error {
 	}
 
 	s.nodePutRecords.ExecAtomic(func() {
+		putRecord := NewPutRecord(putArgs.Key, putArgs.Context)
 		if s.nodePutRecords.CheckPutRecordInNode(putRecord, s.selfNode) {
 			// If this server still has this entry (PutRecord),
 			// then add new PutRecords associated with the server (DynamoNode) that successfully put previously
