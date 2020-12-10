@@ -400,7 +400,7 @@ var _ = Describe("Basic Put & Get", func() {
 				entry.Value = []byte("v0-s1-1")
 				sc.GetClient(0).Put(MakePutFromEntry("k0", entry))
 
-				// Get entry from server-1, update it, and put to server-0
+				// Get entry from server-2, update it, and put to server-0
 				entry = sc.GetClient(2).Get("k0").EntryList[0]
 				entry.Value = []byte("v0-s2-1")
 				sc.GetClient(0).Put(MakePutFromEntry("k0", entry))
@@ -429,7 +429,7 @@ var _ = Describe("Basic Put & Get", func() {
 				entry.Value = []byte("v0-s0-1")
 				sc.GetClient(0).Put(MakePutFromEntry("k0", entry))
 
-				// Get entry from server-1, update it, and put to server-0
+				// Get entry from server-2, update it, and put to server-0
 				entry = sc.GetClient(2).Get("k0").EntryList[0]
 				entry.Value = []byte("v0-s0-1")
 				sc.GetClient(0).Put(MakePutFromEntry("k0", entry))
