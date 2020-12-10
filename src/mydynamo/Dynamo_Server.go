@@ -12,20 +12,20 @@ import (
 
 type DynamoServer struct {
 	/*------------Dynamo-specific-------------*/
-	wValue          int          //Number of nodes to write to on each Put
-	rValue          int          //Number of nodes to read from on each Get
-	preferenceList  []DynamoNode //Ordered list of other Dynamo nodes to perform operations o
-	selfNode        DynamoNode   //This node's address and port info
-	nodeID          string       //ID of this node
-	localEntriesMap ObjectEntriesMap
-	isCrashed       bool
-	isCrashedMutex  *sync.RWMutex
+	wValue           int          //Number of nodes to write to on each Put
+	rValue           int          //Number of nodes to read from on each Get
+	preferenceList   []DynamoNode //Ordered list of other Dynamo nodes to perform operations o
+	selfNode         DynamoNode   //This node's address and port info
+	nodeID           string       //ID of this node
+	localEntriesMap  ObjectEntriesMap
+	isCrashed        bool
+	isCrashedRWMutex *sync.RWMutex
 }
 
 // Returns error if the server is in crash state, otherwise nil
 func (s *DynamoServer) checkCrashed() error {
-	s.isCrashedMutex.RLock()
-	defer s.isCrashedMutex.RUnlock()
+	s.isCrashedRWMutex.RLock()
+	defer s.isCrashedRWMutex.RUnlock()
 
 	if s.isCrashed {
 		return errors.New("Server is crashed")
@@ -93,16 +93,16 @@ func (s *DynamoServer) Crash(seconds int, success *bool) error {
 		return err
 	}
 
-	s.isCrashedMutex.Lock()
+	s.isCrashedRWMutex.Lock()
 	s.isCrashed = true
-	s.isCrashedMutex.Unlock()
+	s.isCrashedRWMutex.Unlock()
 
 	go func() {
 		time.Sleep(time.Duration(seconds) * time.Second)
 
-		s.isCrashedMutex.Lock()
+		s.isCrashedRWMutex.Lock()
 		s.isCrashed = false
-		s.isCrashedMutex.Unlock()
+		s.isCrashedRWMutex.Unlock()
 	}()
 
 	*success = true
@@ -111,8 +111,8 @@ func (s *DynamoServer) Crash(seconds int, success *bool) error {
 
 // Makes server unavailable forever
 func (s *DynamoServer) ForceCrash(_ Empty, _ *Empty) error {
-	s.isCrashedMutex.Lock()
-	defer s.isCrashedMutex.Unlock()
+	s.isCrashedRWMutex.Lock()
+	defer s.isCrashedRWMutex.Unlock()
 
 	s.isCrashed = true
 	return nil
@@ -120,8 +120,8 @@ func (s *DynamoServer) ForceCrash(_ Empty, _ *Empty) error {
 
 // Makes server available
 func (s *DynamoServer) ForceRestore(_ Empty, _ *Empty) error {
-	s.isCrashedMutex.Lock()
-	defer s.isCrashedMutex.Unlock()
+	s.isCrashedRWMutex.Lock()
+	defer s.isCrashedRWMutex.Unlock()
 
 	s.isCrashed = false
 	return nil
@@ -291,14 +291,14 @@ func NewDynamoServer(w int, r int, hostAddr string, hostPort string, id string) 
 	}
 
 	return DynamoServer{
-		wValue:          w,
-		rValue:          r,
-		preferenceList:  preferenceList,
-		selfNode:        selfNodeInfo,
-		nodeID:          id,
-		localEntriesMap: NewObjectEntriesMap(),
-		isCrashed:       false,
-		isCrashedMutex:  &sync.RWMutex{},
+		wValue:           w,
+		rValue:           r,
+		preferenceList:   preferenceList,
+		selfNode:         selfNodeInfo,
+		nodeID:           id,
+		localEntriesMap:  NewObjectEntriesMap(),
+		isCrashed:        false,
+		isCrashedRWMutex: &sync.RWMutex{},
 	}
 }
 
