@@ -102,7 +102,7 @@ var _ = Describe("Crash", func() {
 				}))
 			})
 
-			It("shold be able to crash again.", func() {
+			It("should be able to crash again.", func() {
 				Expect(sc.GetClient(0).Crash(3)).To(BeTrue())
 			})
 		})

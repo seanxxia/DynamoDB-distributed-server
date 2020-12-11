@@ -6,23 +6,29 @@ import (
 	"net"
 	"net/http"
 	"net/rpc"
+	"sync"
 	"time"
 )
 
 type DynamoServer struct {
 	/*------------Dynamo-specific-------------*/
-	wValue          int          //Number of nodes to write to on each Put
-	rValue          int          //Number of nodes to read from on each Get
-	preferenceList  []DynamoNode //Ordered list of other Dynamo nodes to perform operations o
-	selfNode        DynamoNode   //This node's address and port info
-	nodeID          string       //ID of this node
-	localEntriesMap ObjectEntriesMap
-	crashTimeout    time.Time
+	wValue           int          //Number of nodes to write to on each Put
+	rValue           int          //Number of nodes to read from on each Get
+	preferenceList   []DynamoNode //Ordered list of other Dynamo nodes to perform operations o
+	selfNode         DynamoNode   //This node's address and port info
+	nodeID           string       //ID of this node
+	localEntriesMap  ObjectEntriesMap
+	nodePutRecords   DynamoNodePutRecords
+	isCrashed        bool
+	isCrashedRWMutex *sync.RWMutex
 }
 
 // Returns error if the server is in crash state, otherwise nil
 func (s *DynamoServer) checkCrashed() error {
-	if time.Now().Before(s.crashTimeout) {
+	s.isCrashedRWMutex.RLock()
+	defer s.isCrashedRWMutex.RUnlock()
+
+	if s.isCrashed {
 		return errors.New("Server is crashed")
 	}
 
@@ -50,31 +56,48 @@ func (s *DynamoServer) Gossip(_ Empty, _ *Empty) error {
 	rpcClientMap := map[DynamoNode]*RPCClient{}
 
 	for _, key := range entryKeys {
-		for _, preferedDynamoNode := range s.preferenceList {
-			if preferedDynamoNode == s.selfNode {
+		for _, preferredDynamoNode := range s.preferenceList {
+			if preferredDynamoNode == s.selfNode {
 				continue
 			}
 
-			if _, ok := rpcClientMap[preferedDynamoNode]; !ok {
-				rpcClient := NewDynamoRPCClientFromDynamoNode(preferedDynamoNode)
+			if _, ok := rpcClientMap[preferredDynamoNode]; !ok {
+				rpcClient := NewDynamoRPCClientFromDynamoNodeAndConnect(preferredDynamoNode)
 				defer rpcClient.CleanConn()
 
-				rpcClientMap[preferedDynamoNode] = rpcClient
+				rpcClientMap[preferredDynamoNode] = rpcClient
 			}
 
 			s.localEntriesMap.RLock(key)
 			localEntries := s.localEntriesMap.Get(key)
 			s.localEntriesMap.RUnlock(key)
 
-			for _, localEntry := range localEntries {
-				putArgs := PutArgs{
-					Key:     key,
-					Context: localEntry.Context,
-					Value:   localEntry.Value,
-				}
+			putRecords := make([]PutRecord, 0)
 
-				rpcClientMap[preferedDynamoNode].PutRaw(putArgs)
+			for _, localEntry := range localEntries {
+				putRecord := NewPutRecord(key, localEntry.Context)
+
+				if !s.nodePutRecords.CheckPutRecordInNode(putRecord, preferredDynamoNode) {
+					putArgs := PutArgs{
+						Key:     key,
+						Context: localEntry.Context,
+						Value:   localEntry.Value,
+					}
+					if rpcClientMap[preferredDynamoNode].PutRaw(putArgs) {
+						putRecords = append(putRecords, putRecord)
+					}
+				}
 			}
+
+			s.nodePutRecords.ExecAtomic(func() {
+				for _, putRecord := range putRecords {
+					if s.nodePutRecords.CheckPutRecordInNode(putRecord, s.selfNode) {
+						// If this server still has this entry (PutRecord),
+						// then add new PutRecords associated with the server (DynamoNode) that successfully put previously
+						s.nodePutRecords.AddPutRecordToDynamoNode(putRecord, preferredDynamoNode)
+					}
+				}
+			})
 		}
 	}
 	return nil
@@ -88,22 +111,37 @@ func (s *DynamoServer) Crash(seconds int, success *bool) error {
 		return err
 	}
 
-	s.crashTimeout = time.Now().Add(time.Second * time.Duration(seconds))
+	s.isCrashedRWMutex.Lock()
+	s.isCrashed = true
+	s.isCrashedRWMutex.Unlock()
+
+	go func() {
+		time.Sleep(time.Duration(seconds) * time.Second)
+
+		s.isCrashedRWMutex.Lock()
+		s.isCrashed = false
+		s.isCrashedRWMutex.Unlock()
+	}()
+
 	*success = true
 	return nil
 }
 
 // Makes server unavailable forever
 func (s *DynamoServer) ForceCrash(_ Empty, _ *Empty) error {
-	// Set server.crashTimeout to a long time after now (3 years)
-	s.crashTimeout = time.Now().AddDate(3, 0, 0)
+	s.isCrashedRWMutex.Lock()
+	defer s.isCrashedRWMutex.Unlock()
+
+	s.isCrashed = true
 	return nil
 }
 
 // Makes server available
 func (s *DynamoServer) ForceRestore(_ Empty, _ *Empty) error {
-	// Set server.crashTimeout to a time before now (1 day before)
-	s.crashTimeout = time.Now().AddDate(0, 0, -1)
+	s.isCrashedRWMutex.Lock()
+	defer s.isCrashedRWMutex.Unlock()
+
+	s.isCrashed = false
 	return nil
 }
 
@@ -127,21 +165,33 @@ func (s *DynamoServer) Put(putArgs PutArgs, result *bool) error {
 	}
 
 	wCount := 1
-	for _, preferedDynamoNode := range s.preferenceList {
+	successfullyPutNodes := make([]DynamoNode, 0)
+	for _, preferredDynamoNode := range s.preferenceList {
 		if wCount >= s.wValue {
 			break
 		}
-		if preferedDynamoNode == s.selfNode {
+		if preferredDynamoNode == s.selfNode {
 			continue
 		}
 
-		// TODO: Store success / fail results to reduce redundant data transfer in gossip
-		rpcClient := NewDynamoRPCClientFromDynamoNode(preferedDynamoNode)
+		rpcClient := NewDynamoRPCClientFromDynamoNodeAndConnect(preferredDynamoNode)
 		defer rpcClient.CleanConn()
 		if rpcClient.PutRaw(putArgs) {
+			successfullyPutNodes = append(successfullyPutNodes, preferredDynamoNode)
 			wCount++
 		}
 	}
+
+	s.nodePutRecords.ExecAtomic(func() {
+		putRecord := NewPutRecord(putArgs.Key, putArgs.Context)
+		if s.nodePutRecords.CheckPutRecordInNode(putRecord, s.selfNode) {
+			// If this server still has this entry (PutRecord),
+			// then add new PutRecords associated with the server (DynamoNode) that successfully put previously
+			for _, node := range successfullyPutNodes {
+				s.nodePutRecords.AddPutRecordToDynamoNode(putRecord, node)
+			}
+		}
+	})
 
 	*result = wCount >= s.wValue
 	return nil
@@ -165,19 +215,31 @@ func (s *DynamoServer) PutRaw(putArgs PutArgs, result *bool) error {
 
 	localEntries := s.localEntriesMap.Get(key)
 
-	for i := 0; i < len(localEntries); {
-		localEntry := localEntries[i]
+	indicesToRemove := make([]int, 0)
+	for i, localEntry := range localEntries {
 		if vClock.LessThan(localEntry.Context.Clock) || vClock.Equals(localEntry.Context.Clock) {
 			*result = true
 			return nil
 		}
 
 		if localEntry.Context.Clock.LessThan(vClock) {
-			localEntries = remove(localEntries, i)
-		} else {
-			// vClock.Concurrent(localEntry.Context.Clock) == true
-			i++
+			indicesToRemove = append(indicesToRemove, i)
 		}
+	}
+
+	s.nodePutRecords.ExecAtomic(func() {
+		for i := len(indicesToRemove) - 1; i >= 0; i-- {
+			entryToRemove := &localEntries[indicesToRemove[i]]
+			putRecordToRemove := NewPutRecord(key, entryToRemove.Context)
+			s.nodePutRecords.DeletePutRecord(putRecordToRemove)
+		}
+
+		putRecord := NewPutRecord(key, putArgs.Context)
+		s.nodePutRecords.AddPutRecordToDynamoNode(putRecord, s.selfNode)
+	})
+
+	for i := len(indicesToRemove) - 1; i >= 0; i-- {
+		localEntries = remove(localEntries, indicesToRemove[i])
 	}
 
 	localEntries = append(localEntries, ObjectEntry{
@@ -203,16 +265,16 @@ func (s *DynamoServer) Get(key string, result *DynamoResult) error {
 	}
 
 	rCount := 1
-	for _, preferedDynamoNode := range s.preferenceList {
+	for _, preferredDynamoNode := range s.preferenceList {
 		if rCount >= s.rValue {
 			break
 		}
-		if preferedDynamoNode == s.selfNode {
+		if preferredDynamoNode == s.selfNode {
 			continue
 		}
 
 		// TODO: Reuse RPC client
-		rpcClient := NewDynamoRPCClientFromDynamoNode(preferedDynamoNode)
+		rpcClient := NewDynamoRPCClientFromDynamoNodeAndConnect(preferredDynamoNode)
 		defer rpcClient.CleanConn()
 
 		remoteResult := DynamoResult{EntryList: nil}
@@ -221,7 +283,6 @@ func (s *DynamoServer) Get(key string, result *DynamoResult) error {
 
 			// Iterate over remote entries and add concurrent entries to result
 			// TODO: Improve performance
-
 			for _, remoteEntry := range remoteResult.EntryList {
 				isRemoteEntryConcurrent := true
 				indicesToRemove := make([]int, 0)
@@ -271,13 +332,15 @@ func NewDynamoServer(w int, r int, hostAddr string, hostPort string, id string) 
 	}
 
 	return DynamoServer{
-		wValue:          w,
-		rValue:          r,
-		preferenceList:  preferenceList,
-		selfNode:        selfNodeInfo,
-		nodeID:          id,
-		localEntriesMap: NewObjectEntriesMap(),
-		crashTimeout:    time.Now().AddDate(0, 0, -1),
+		wValue:           w,
+		rValue:           r,
+		preferenceList:   preferenceList,
+		selfNode:         selfNodeInfo,
+		nodeID:           id,
+		localEntriesMap:  NewObjectEntriesMap(),
+		nodePutRecords:   NewDynamoNodePutRecords(),
+		isCrashed:        false,
+		isCrashedRWMutex: &sync.RWMutex{},
 	}
 }
 

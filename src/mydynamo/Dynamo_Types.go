@@ -12,6 +12,10 @@ type Context struct {
 	Clock VectorClock
 }
 
+func (c *Context) ToJSON() string {
+	return c.Clock.ToJSON()
+}
+
 //Information needed to connect to a DynamoNOde
 type DynamoNode struct {
 	Address string
@@ -110,4 +114,88 @@ func (m *ObjectEntriesMap) Unlock(key string) {
 func (m *ObjectEntriesMap) RUnlock(key string) {
 	mu, _ := m.entriesRWMutexMap.LoadOrStore(key, &sync.RWMutex{})
 	mu.(*sync.RWMutex).RUnlock()
+}
+
+// PutArg identifier. It is used to record if the server saw a PutArg before
+type PutRecord struct {
+	Key           string
+	ContextString string
+}
+
+// Creates a new PutRecord
+func NewPutRecord(key string, context Context) PutRecord {
+	return PutRecord{
+		Key:           key,
+		ContextString: context.ToJSON(),
+	}
+}
+
+// Data structure to store the information if a server (DynamoNode) saw a PutArg (PutRecord) before
+type DynamoNodePutRecords struct {
+	putRecordSeenNodes      *map[PutRecord](*map[DynamoNode]bool)
+	putRecordSeenNodesMutex *sync.RWMutex
+	mu                      *sync.Mutex
+}
+
+// Creates a new DynamoNodePutRecords
+func NewDynamoNodePutRecords() DynamoNodePutRecords {
+	return DynamoNodePutRecords{
+		putRecordSeenNodes:      &map[PutRecord](*map[DynamoNode]bool){},
+		putRecordSeenNodesMutex: &sync.RWMutex{},
+		mu:                      &sync.Mutex{},
+	}
+}
+
+// Add a PutRecord associated with the given DynamoNode
+func (r *DynamoNodePutRecords) AddPutRecordToDynamoNode(putRecord PutRecord, node DynamoNode) {
+	r.putRecordSeenNodesMutex.Lock()
+	defer r.putRecordSeenNodesMutex.Unlock()
+
+	var ok bool
+	var seenNodes *map[DynamoNode]bool
+
+	if seenNodes, ok = (*r.putRecordSeenNodes)[putRecord]; !ok {
+		seenNodes = &map[DynamoNode]bool{}
+		(*r.putRecordSeenNodes)[putRecord] = seenNodes
+	}
+
+	(*seenNodes)[node] = true
+}
+
+// Remove all records with the given PutRecord
+func (r *DynamoNodePutRecords) DeletePutRecord(putRecord PutRecord) {
+	r.putRecordSeenNodesMutex.Lock()
+	defer r.putRecordSeenNodesMutex.Unlock()
+
+	delete(*r.putRecordSeenNodes, putRecord)
+}
+
+// Return true if the given server (DynamoNode) saw the PutArg (PutRecord) before
+func (r *DynamoNodePutRecords) CheckPutRecordInNode(putRecord PutRecord, node DynamoNode) bool {
+	r.putRecordSeenNodesMutex.RLock()
+	defer r.putRecordSeenNodesMutex.RUnlock()
+
+	if seenNodes, ok := (*r.putRecordSeenNodes)[putRecord]; ok {
+		_, seen := (*seenNodes)[node]
+		return seen
+	}
+
+	return false
+}
+
+// Lock the DynamoNodePutRecords for writing
+func (r *DynamoNodePutRecords) WLock() {
+	r.mu.Lock()
+}
+
+// Unlock the DynamoNodePutRecords for writing
+func (r *DynamoNodePutRecords) WUnlock() {
+	r.mu.Unlock()
+}
+
+// Execute the given function with the DynamoNodePutRecords be locked for writing
+func (r *DynamoNodePutRecords) ExecAtomic(f func()) {
+	r.WLock()
+	f()
+	r.WUnlock()
 }
