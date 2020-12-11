@@ -102,6 +102,7 @@ var _ = Describe("Concurrent", func() {
 
 	Describe("Multiple Servers", func() {
 		const serverNum int = 10
+		const randomBytesNum int = 1024
 		// const concurrentClientsNum int = 100
 
 		var sc ServerCoordinator
@@ -113,23 +114,76 @@ var _ = Describe("Concurrent", func() {
 		AfterEach(func() {
 			sc.Kill()
 		})
+
+		It("should handle concurrent put and gossip", func(done Done) {
+			var wg sync.WaitGroup
+
+			expectedEntryValues := make([][]byte, 0, serverNum)
+			for i := 0; i < serverNum; i++ {
+				expectedEntryValues = append(expectedEntryValues, MakeRandomBytes(randomBytesNum))
+			}
+
+			wg.Add(serverNum)
+			for serverID := 0; serverID < serverNum; serverID++ {
+				go func(serverID int) {
+					defer GinkgoRecover()
+
+					client := sc.MakeNewClient(serverID)
+					defer client.CleanConn()
+					client.Put(MakePutFreshEntry("key", expectedEntryValues[serverID]))
+
+					for i := 0; i < 10; i++ {
+						client.Gossip()
+					}
+					wg.Done()
+				}(serverID)
+			}
+			wg.Wait()
+
+			wg.Add(serverNum)
+			for serverID := 0; serverID < serverNum; serverID++ {
+				go func(serverID int) {
+					defer GinkgoRecover()
+
+					client := sc.MakeNewClient(serverID)
+					defer client.CleanConn()
+
+					res := client.Get("key")
+					Expect(res).NotTo(BeNil())
+					Expect(GetEntryValues(res)).To(ConsistOf(expectedEntryValues))
+
+					wg.Done()
+				}(serverID)
+			}
+			wg.Wait()
+
+			close(done)
+		}, 20.0)
+
 		It("should handle concurrent put and gossip (2)", func(done Done) {
 			var wg sync.WaitGroup
 
 			wg.Add(2)
 
 			sc.GetClient(5).Put(MakePutFreshEntry("k1", []byte("v1")))
-			go func(serverID int) {
+			go func() {
 				defer GinkgoRecover()
-				sc.GetClient(serverID).Put(MakePutFreshEntry("k1", []byte("v0")))
-				wg.Done()
-			}(0)
+				client := sc.MakeNewClient(0)
+				defer client.CleanConn()
 
-			go func(serverID int) {
-				defer GinkgoRecover()
-				sc.GetClient(serverID).Gossip()
+				client.Put(MakePutFreshEntry("k1", []byte("v0")))
+
 				wg.Done()
-			}(1)
+
+			}()
+
+			go func() {
+				defer GinkgoRecover()
+				client := sc.MakeNewClient(1)
+				defer client.CleanConn()
+				client.Gossip()
+				wg.Done()
+			}()
 
 			wg.Wait()
 
