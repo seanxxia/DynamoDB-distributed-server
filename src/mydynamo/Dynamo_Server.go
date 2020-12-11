@@ -53,53 +53,57 @@ func (s *DynamoServer) Gossip(_ Empty, _ *Empty) error {
 	}
 
 	entryKeys := s.localEntriesMap.GetKeys()
-	rpcClientMap := map[DynamoNode]*RPCClient{}
 
-	for _, key := range entryKeys {
-		for _, preferredDynamoNode := range s.preferenceList {
-			if preferredDynamoNode == s.selfNode {
-				continue
-			}
+	var wg sync.WaitGroup
 
-			if _, ok := rpcClientMap[preferredDynamoNode]; !ok {
-				rpcClient := NewDynamoRPCClientFromDynamoNodeAndConnect(preferredDynamoNode)
-				defer rpcClient.CleanConn()
-
-				rpcClientMap[preferredDynamoNode] = rpcClient
-			}
-
-			s.localEntriesMap.RLock(key)
-			localEntries := s.localEntriesMap.Get(key)
-			s.localEntriesMap.RUnlock(key)
-
-			putRecords := make([]PutRecord, 0)
-
-			for _, localEntry := range localEntries {
-				putRecord := NewPutRecord(key, localEntry.Context)
-
-				if !s.nodePutRecords.CheckPutRecordInNode(putRecord, preferredDynamoNode) {
-					putArgs := PutArgs{
-						Key:     key,
-						Context: localEntry.Context,
-						Value:   localEntry.Value,
-					}
-					if rpcClientMap[preferredDynamoNode].PutRaw(putArgs) {
-						putRecords = append(putRecords, putRecord)
-					}
-				}
-			}
-
-			s.nodePutRecords.ExecAtomic(func() {
-				for _, putRecord := range putRecords {
-					if s.nodePutRecords.CheckPutRecordInNode(putRecord, s.selfNode) {
-						// If this server still has this entry (PutRecord),
-						// then add new PutRecords associated with the server (DynamoNode) that successfully put previously
-						s.nodePutRecords.AddPutRecordToDynamoNode(putRecord, preferredDynamoNode)
-					}
-				}
-			})
+	for _, preferredDynamoNode := range s.preferenceList {
+		if preferredDynamoNode == s.selfNode {
+			continue
 		}
+
+		wg.Add(1)
+		go func(node DynamoNode) {
+			defer wg.Done()
+
+			rpcClient := NewDynamoRPCClientFromDynamoNodeAndConnect(node)
+			defer rpcClient.CleanConn()
+
+			for _, key := range entryKeys {
+				s.localEntriesMap.RLock(key)
+				localEntries := s.localEntriesMap.Get(key)
+				s.localEntriesMap.RUnlock(key)
+
+				putRecords := make([]PutRecord, 0)
+
+				for _, localEntry := range localEntries {
+					putRecord := NewPutRecord(key, localEntry.Context)
+
+					if !s.nodePutRecords.CheckPutRecordInNode(putRecord, node) {
+						putArgs := PutArgs{
+							Key:     key,
+							Context: localEntry.Context,
+							Value:   localEntry.Value,
+						}
+						if rpcClient.PutRaw(putArgs) {
+							putRecords = append(putRecords, putRecord)
+						}
+					}
+				}
+
+				s.nodePutRecords.ExecAtomic(func() {
+					for _, putRecord := range putRecords {
+						if s.nodePutRecords.CheckPutRecordInNode(putRecord, s.selfNode) {
+							// If this server still has this entry (PutRecord),
+							// then add new PutRecords associated with the server (DynamoNode) that successfully put previously
+							s.nodePutRecords.AddPutRecordToDynamoNode(putRecord, node)
+						}
+					}
+				})
+			}
+		}(preferredDynamoNode)
 	}
+	wg.Wait()
+
 	return nil
 }
 
