@@ -8,7 +8,6 @@ import (
 	"os"
 	"strconv"
 	"sync"
-	"time"
 
 	"github.com/go-ini/ini"
 )
@@ -78,7 +77,8 @@ func main() {
 	//so that each node has a distinct preference list
 	nodePreferenceList := dynamoNodeList
 
-	time.Sleep(3 * time.Second)
+	//wait for all servers to finish
+	wg.Wait()
 
 	//Send the preference list to all servers
 	for _, info := range dynamoNodeList {
@@ -95,7 +95,4 @@ func main() {
 		nodePreferenceList = mydynamo.RotateServerList(nodePreferenceList)
 	}
 	/*---------------------------------------------*/
-
-	//wait for all servers to finish
-	wg.Wait()
 }
