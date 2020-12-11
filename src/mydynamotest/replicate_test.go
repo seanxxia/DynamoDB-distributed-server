@@ -149,7 +149,7 @@ var _ = Describe("Put & Get Replicate", func() {
 			}))
 		})
 
-		FIt("should replicate put entry even if it is an ancestor of local entries.", func() {
+		It("should replicate put entry even if it is an ancestor of local entries (crash).", func() {
 			sc.GetClient(1).ForceCrash()
 			sc.GetClient(0).Put(MakePutFromVectorClockMapAndValue(
 				"k0",
@@ -174,7 +174,9 @@ var _ = Describe("Put & Get Replicate", func() {
 
 			res = sc.GetClient(2).Get("k0")
 			Expect(res).NotTo(BeNil())
-			Expect(GetEntryValues(res)).To(ConsistOf([][]byte{}))
+			Expect(GetEntryValues(res)).To(ConsistOf([][]byte{
+				[]byte("v0-1"),
+			}))
 		})
 	})
 
