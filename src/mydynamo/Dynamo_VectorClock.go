@@ -72,12 +72,3 @@ func (s *VectorClock) Equals(otherVectorClock VectorClock) bool {
 
 	return true
 }
-
-// Returns the vector clock as map. (for testing only)
-func (s *VectorClock) ToMap() map[string]uint64 {
-	localClocks := make(map[string]uint64)
-	for k, v := range s.NodeClocks {
-		localClocks[k] = v
-	}
-	return localClocks
-}

@@ -59,12 +59,8 @@ func (s *ServerCoordinator) GetClient(serverIndex int) *dy.RPCClient {
 	if _, ok := s.rpcClientMap[serverIndex]; !ok {
 		client := dy.NewDynamoRPCClient("localhost:" + strconv.Itoa(s.StartingPort+serverIndex))
 
-		retryMax := 3
-		for i := 0; i < retryMax; i++ {
-			err := client.CleanAndConn()
-			if err == nil {
-				break
-			}
+		if err := client.CleanAndConn(); err != nil {
+			panic(err)
 		}
 		s.rpcClientMap[serverIndex] = client
 	}
@@ -77,12 +73,8 @@ func (s *ServerCoordinator) GetClient(serverIndex int) *dy.RPCClient {
 func (s *ServerCoordinator) MakeNewClient(serverIndex int) *dy.RPCClient {
 	client := dy.NewDynamoRPCClient("localhost:" + strconv.Itoa(s.StartingPort+serverIndex))
 
-	retryMax := 3
-	for i := 0; i < retryMax; i++ {
-		err := client.CleanAndConn()
-		if err == nil {
-			break
-		}
+	if err := client.CleanAndConn(); err != nil {
+		panic(err)
 	}
 	return client
 }
