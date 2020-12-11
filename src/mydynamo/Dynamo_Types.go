@@ -4,7 +4,7 @@ import (
 	"sync"
 )
 
-//Placeholder type for RPC functions that don't need an argument list or a return value
+// Placeholder type for RPC functions that don't need an argument list or a return value
 type Empty struct{}
 
 //Context associated with some value
@@ -12,43 +12,45 @@ type Context struct {
 	Clock VectorClock
 }
 
+// Returns the JSON string of the context
+//The key in the JSON string is sorted, which means the JSON strings are equal iff two contexts are equal
 func (c *Context) ToJSON() string {
 	return c.Clock.ToJSON()
 }
 
-//Information needed to connect to a DynamoNOde
+// Information needed to connect to a DynamoNode
 type DynamoNode struct {
 	Address string
 	Port    string
 }
 
-//A single value, as well as the Context associated with it
+// A single value, as well as the Context associated with it
 type ObjectEntry struct {
 	Context Context
 	Value   []byte
 }
 
-//Result of a Get operation, a list of ObjectEntry structs
+// Result of a Get operation, a list of ObjectEntry structs
 type DynamoResult struct {
 	EntryList []ObjectEntry
 }
 
-//Arguments required for a Put operation: the key, the context, and the value
+// Arguments required for a Put operation: the key, the context, and the value
 type PutArgs struct {
 	Key     string
 	Context Context
 	Value   []byte
 }
 
-//Map type to store string type key and object entry pairs
-//It provides methods to lock entries and be safe for concurrent use by multiple goroutines
+// Map type to store string type key and object entry pairs
+// It provides methods to lock entries and be safe for concurrent use by multiple goroutines
 type ObjectEntriesMap struct {
 	entriesMap        *map[string][]ObjectEntry
 	entriesMapMutex   *sync.RWMutex
 	entriesRWMutexMap *sync.Map
 }
 
-//Return a new ObjectEntriesMap
+// Return a new ObjectEntriesMap
 func NewObjectEntriesMap() ObjectEntriesMap {
 	return ObjectEntriesMap{
 		entriesMap:        &map[string][]ObjectEntry{},
