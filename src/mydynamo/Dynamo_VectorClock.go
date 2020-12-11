@@ -1,5 +1,7 @@
 package mydynamo
 
+import "encoding/json"
+
 //The vector clock data type for dynamo server events
 type VectorClock struct {
 	NodeClocks map[string]uint64
@@ -71,4 +73,14 @@ func (s *VectorClock) Equals(otherVectorClock VectorClock) bool {
 	}
 
 	return true
+}
+
+//Returns the JSON string for the vector clock map
+func (s *VectorClock) ToJSON() string {
+	data, err := json.Marshal(s.NodeClocks)
+	if err != nil {
+		panic(err)
+	}
+
+	return string(data)
 }

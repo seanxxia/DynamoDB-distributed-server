@@ -18,6 +18,7 @@ type DynamoServer struct {
 	selfNode         DynamoNode   //This node's address and port info
 	nodeID           string       //ID of this node
 	localEntriesMap  ObjectEntriesMap
+	nodePutRecords   DynamoNodePutRecords
 	isCrashed        bool
 	isCrashedRWMutex *sync.RWMutex
 }
@@ -71,15 +72,32 @@ func (s *DynamoServer) Gossip(_ Empty, _ *Empty) error {
 			localEntries := s.localEntriesMap.Get(key)
 			s.localEntriesMap.RUnlock(key)
 
-			for _, localEntry := range localEntries {
-				putArgs := PutArgs{
-					Key:     key,
-					Context: localEntry.Context,
-					Value:   localEntry.Value,
-				}
+			putRecords := make([]PutRecord, 0)
 
-				rpcClientMap[preferredDynamoNode].PutRaw(putArgs)
+			for _, localEntry := range localEntries {
+				putRecord := NewPutRecord(key, localEntry.Context)
+
+				if !s.nodePutRecords.CheckPutRecordInNode(putRecord, preferredDynamoNode) {
+					putArgs := PutArgs{
+						Key:     key,
+						Context: localEntry.Context,
+						Value:   localEntry.Value,
+					}
+					if rpcClientMap[preferredDynamoNode].PutRaw(putArgs) {
+						putRecords = append(putRecords, putRecord)
+					}
+				}
 			}
+
+			s.nodePutRecords.ExecAtomic(func() {
+				for _, putRecord := range putRecords {
+					if s.nodePutRecords.CheckPutRecordInNode(putRecord, s.selfNode) {
+						// If this server still has this entry (PutRecord),
+						// then add new PutRecords associated with the server (DynamoNode) that successfully put previously
+						s.nodePutRecords.AddPutRecordToDynamoNode(putRecord, preferredDynamoNode)
+					}
+				}
+			})
 		}
 	}
 	return nil
@@ -147,6 +165,7 @@ func (s *DynamoServer) Put(putArgs PutArgs, result *bool) error {
 	}
 
 	wCount := 1
+	successfullyPutNodes := make([]DynamoNode, 0)
 	for _, preferredDynamoNode := range s.preferenceList {
 		if wCount >= s.wValue {
 			break
@@ -155,13 +174,24 @@ func (s *DynamoServer) Put(putArgs PutArgs, result *bool) error {
 			continue
 		}
 
-		// TODO: Store success / fail results to reduce redundant data transfer in gossip
 		rpcClient := NewDynamoRPCClientFromDynamoNodeAndConnect(preferredDynamoNode)
 		defer rpcClient.CleanConn()
 		if rpcClient.PutRaw(putArgs) {
+			successfullyPutNodes = append(successfullyPutNodes, preferredDynamoNode)
 			wCount++
 		}
 	}
+
+	s.nodePutRecords.ExecAtomic(func() {
+		putRecord := NewPutRecord(putArgs.Key, putArgs.Context)
+		if s.nodePutRecords.CheckPutRecordInNode(putRecord, s.selfNode) {
+			// If this server still has this entry (PutRecord),
+			// then add new PutRecords associated with the server (DynamoNode) that successfully put previously
+			for _, node := range successfullyPutNodes {
+				s.nodePutRecords.AddPutRecordToDynamoNode(putRecord, node)
+			}
+		}
+	})
 
 	*result = wCount >= s.wValue
 	return nil
@@ -196,6 +226,17 @@ func (s *DynamoServer) PutRaw(putArgs PutArgs, result *bool) error {
 			indicesToRemove = append(indicesToRemove, i)
 		}
 	}
+
+	s.nodePutRecords.ExecAtomic(func() {
+		for i := len(indicesToRemove) - 1; i >= 0; i-- {
+			entryToRemove := &localEntries[indicesToRemove[i]]
+			putRecordToRemove := NewPutRecord(key, entryToRemove.Context)
+			s.nodePutRecords.DeletePutRecord(putRecordToRemove)
+		}
+
+		putRecord := NewPutRecord(key, putArgs.Context)
+		s.nodePutRecords.AddPutRecordToDynamoNode(putRecord, s.selfNode)
+	})
 
 	for i := len(indicesToRemove) - 1; i >= 0; i-- {
 		localEntries = remove(localEntries, indicesToRemove[i])
@@ -297,6 +338,7 @@ func NewDynamoServer(w int, r int, hostAddr string, hostPort string, id string) 
 		selfNode:         selfNodeInfo,
 		nodeID:           id,
 		localEntriesMap:  NewObjectEntriesMap(),
+		nodePutRecords:   NewDynamoNodePutRecords(),
 		isCrashed:        false,
 		isCrashedRWMutex: &sync.RWMutex{},
 	}
