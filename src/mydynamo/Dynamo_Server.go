@@ -12,13 +12,13 @@ import (
 
 type DynamoServer struct {
 	/*------------Dynamo-specific-------------*/
-	wValue          int          //Number of nodes to write to on each Put
-	rValue          int          //Number of nodes to read from on each Get
-	preferenceList  []DynamoNode //Ordered list of other Dynamo nodes to perform operations o
-	selfNode        DynamoNode   //This node's address and port info
-	nodeID          string       //ID of this node
-	localEntriesMap ObjectEntriesMap
-	nodePutRecords  DynamoNodePutRecords
+	wValue           int          //Number of nodes to write to on each Put
+	rValue           int          //Number of nodes to read from on each Get
+	preferenceList   []DynamoNode //Ordered list of other Dynamo nodes to perform operations o
+	selfNode         DynamoNode   //This node's address and port info
+	nodeID           string       //ID of this node
+	localEntriesMap  ObjectEntriesMap
+	nodePutRecords   DynamoNodePutRecords
 	isCrashed        bool
 	isCrashedRWMutex *sync.RWMutex
 }
@@ -332,13 +332,13 @@ func NewDynamoServer(w int, r int, hostAddr string, hostPort string, id string) 
 	}
 
 	return DynamoServer{
-		wValue:          w,
-		rValue:          r,
-		preferenceList:  preferenceList,
-		selfNode:        selfNodeInfo,
-		nodeID:          id,
-		localEntriesMap: NewObjectEntriesMap(),
-		nodePutRecords:  NewDynamoNodePutRecords(),
+		wValue:           w,
+		rValue:           r,
+		preferenceList:   preferenceList,
+		selfNode:         selfNodeInfo,
+		nodeID:           id,
+		localEntriesMap:  NewObjectEntriesMap(),
+		nodePutRecords:   NewDynamoNodePutRecords(),
 		isCrashed:        false,
 		isCrashedRWMutex: &sync.RWMutex{},
 	}
