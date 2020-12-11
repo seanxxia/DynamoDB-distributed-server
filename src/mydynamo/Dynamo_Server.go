@@ -53,19 +53,14 @@ func (s *DynamoServer) Gossip(_ Empty, _ *Empty) error {
 	}
 
 	entryKeys := s.localEntriesMap.GetKeys()
-	rpcClientMap := map[DynamoNode]*RPCClient{}
 
-	for _, key := range entryKeys {
-		for _, preferredDynamoNode := range s.preferenceList {
+	for _, preferredDynamoNode := range s.preferenceList {
+		rpcClient := NewDynamoRPCClientFromDynamoNodeAndConnect(preferredDynamoNode)
+		defer rpcClient.CleanConn()
+
+		for _, key := range entryKeys {
 			if preferredDynamoNode == s.selfNode {
 				continue
-			}
-
-			if _, ok := rpcClientMap[preferredDynamoNode]; !ok {
-				rpcClient := NewDynamoRPCClientFromDynamoNodeAndConnect(preferredDynamoNode)
-				defer rpcClient.CleanConn()
-
-				rpcClientMap[preferredDynamoNode] = rpcClient
 			}
 
 			s.localEntriesMap.RLock(key)
@@ -83,7 +78,7 @@ func (s *DynamoServer) Gossip(_ Empty, _ *Empty) error {
 						Context: localEntry.Context,
 						Value:   localEntry.Value,
 					}
-					if rpcClientMap[preferredDynamoNode].PutRaw(putArgs) {
+					if rpcClient.PutRaw(putArgs) {
 						putRecords = append(putRecords, putRecord)
 					}
 				}
