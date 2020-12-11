@@ -102,7 +102,6 @@ var _ = Describe("Concurrent", func() {
 
 	Describe("Multiple Servers", func() {
 		const serverNum int = 10
-		const randomBytesNum int = 1024
 		// const concurrentClientsNum int = 100
 
 		var sc ServerCoordinator
@@ -114,7 +113,7 @@ var _ = Describe("Concurrent", func() {
 		AfterEach(func() {
 			sc.Kill()
 		})
-		FIt("should handle concurrent put and gossip (2)", func(done Done) {
+		It("should handle concurrent put and gossip (2)", func(done Done) {
 			var wg sync.WaitGroup
 
 			wg.Add(2)
