@@ -12,15 +12,15 @@ import (
 
 type DynamoServer struct {
 	/*------------Dynamo-specific-------------*/
-	wValue           int          //Number of nodes to write to on each Put
-	rValue           int          //Number of nodes to read from on each Get
-	preferenceList   []DynamoNode //Ordered list of other Dynamo nodes to perform operations o
-	selfNode         DynamoNode   //This node's address and port info
-	nodeID           string       //ID of this node
-	localEntriesMap  ObjectEntriesMap
-	nodePutRecords   DynamoNodePutRecords
-	isCrashed        bool
-	isCrashedRWMutex *sync.RWMutex
+	wValue           int                  //Number of nodes to write to on each Put
+	rValue           int                  //Number of nodes to read from on each Get
+	preferenceList   []DynamoNode         //Ordered list of other Dynamo nodes to perform operations o
+	selfNode         DynamoNode           //This node's address and port info
+	nodeID           string               //ID of this node
+	localEntriesMap  ObjectEntriesMap     //Map for string key to local object entries
+	nodePutRecords   DynamoNodePutRecords //For querying if a node in preferenceList has a PutRecord
+	isCrashed        bool                 //Whether this server is crashed or not
+	isCrashedRWMutex *sync.RWMutex        //RWMutex for the variable `DynamoServer.isCrashed`
 }
 
 // Returns error if the server is in crash state, otherwise nil
