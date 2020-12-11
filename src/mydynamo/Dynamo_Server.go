@@ -249,6 +249,8 @@ func (s *DynamoServer) PutRaw(putArgs PutArgs, result *bool) error {
 
 	s.localEntriesMap.Put(key, localEntries)
 
+	time.Sleep(1 * time.Second)
+
 	*result = true
 	return nil
 }
