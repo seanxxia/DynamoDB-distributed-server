@@ -148,6 +148,34 @@ var _ = Describe("Put & Get Replicate", func() {
 				[]byte("v0-1"),
 			}))
 		})
+
+		FIt("should replicate put entry even if it is an ancestor of local entries.", func() {
+			sc.GetClient(1).ForceCrash()
+			sc.GetClient(0).Put(MakePutFromVectorClockMapAndValue(
+				"k0",
+				map[string]uint64{sc.GetID(0): 1},
+				[]byte("v0-1"),
+			))
+
+			sc.GetClient(1).ForceRestore()
+			sc.GetClient(0).Put(MakePutFreshEntry("k0", []byte("v0-0")))
+
+			res := sc.GetClient(0).Get("k0")
+			Expect(res).NotTo(BeNil())
+			Expect(GetEntryValues(res)).To(ConsistOf([][]byte{
+				[]byte("v0-1"),
+			}))
+
+			res = sc.GetClient(1).Get("k0")
+			Expect(res).NotTo(BeNil())
+			Expect(GetEntryValues(res)).To(ConsistOf([][]byte{
+				[]byte("v0-0"),
+			}))
+
+			res = sc.GetClient(2).Get("k0")
+			Expect(res).NotTo(BeNil())
+			Expect(GetEntryValues(res)).To(ConsistOf([][]byte{}))
+		})
 	})
 
 	Describe("R=2, W=1, ClusterSize=3", func() {
