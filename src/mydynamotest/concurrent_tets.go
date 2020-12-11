@@ -148,6 +148,36 @@ var _ = Describe("Concurrent", func() {
 
 			close(done)
 		}, 20.0)
+
+		It("should handle concurrent put and gossip (3)", func(done Done) {
+			var wg sync.WaitGroup
+
+			wg.Add(2)
+
+			sc.GetClient(5).Put(MakePutFreshEntry("k0", []byte("v0")))
+
+			go func(serverID int) {
+				defer GinkgoRecover()
+				sc.GetClient(serverID).Gossip()
+				wg.Done()
+			}(5)
+
+			go func(serverID int) {
+				defer GinkgoRecover()
+				sc.GetClient(serverID).Put(MakePutFreshEntry("k0", []byte("v1")))
+				wg.Done()
+			}(5)
+
+			wg.Wait()
+
+			res := sc.GetClient(5).Get("k0")
+			Expect(res).NotTo(BeNil())
+			Expect(GetEntryValues(res)).To(ConsistOf([][]byte{
+				[]byte("v0"),
+			}))
+
+			close(done)
+		}, 20.0)
 	})
 
 	Describe("Multiple Servers: Exhausting", func() {
