@@ -35,11 +35,11 @@ func main() {
 	// Load the detailed configuration from section "mydynamo"
 	dynamoConfigs := configContent.Section(mydynamo.MYDYNAMO)
 
-	serverPort, errPort := dynamoConfigs.Key(mydynamo.SERVER_PORT).Int()
-	r_value, errR := dynamoConfigs.Key(mydynamo.R_VALUE).Int()
-	w_value, errW := dynamoConfigs.Key(mydynamo.W_VALUE).Int()
-	cluster_size, errClusterSize := dynamoConfigs.Key(mydynamo.CLUSTER_SIZE).Int()
-	if errPort != nil || errR != nil || errW != nil || errClusterSize != nil {
+	serverPort, _ := dynamoConfigs.Key(mydynamo.SERVER_PORT).Int()
+	r_value, _ := dynamoConfigs.Key(mydynamo.R_VALUE).Int()
+	w_value, _ := dynamoConfigs.Key(mydynamo.W_VALUE).Int()
+	cluster_size, err := dynamoConfigs.Key(mydynamo.CLUSTER_SIZE).Int()
+	if err != nil {
 		log.Println(err)
 		log.Println("Failed to load config file, field is wrong type:", configFilePath)
 		log.Println(mydynamo.USAGE_STRING)
@@ -78,7 +78,7 @@ func main() {
 	//so that each node has a distinct preference list
 	nodePreferenceList := dynamoNodeList
 
-	time.Sleep(3 * time.Second)
+	time.Sleep(1 * time.Second)
 
 	//Send the preference list to all servers
 	for _, info := range dynamoNodeList {
