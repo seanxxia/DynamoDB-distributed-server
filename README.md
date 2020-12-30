@@ -1,12 +1,14 @@
 # DynamoDB
 
-![Lint & Format](https://github.com/summer110669/module-4-project-cse224-chan-xia/workflows/Lint%20&%20Format/badge.svg)
+![Lint & Format](https://github.com/summer110669/DynamoDB-distributed-server/workflows/Lint%20&%20Format/badge.svg)
 ![Test](https://github.com/summer110669/module-4-project-cse224-chan-xia/workflows/Test/badge.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 <div align="center"><img width="300" src="./ucsd-logo.png" /></div>
 
 An implementation of distributed key-value store based on Amazon’s DynamoDB. This key-value store will have a gossip-based replication system, as well as a configurable quorum-type system for reads and writes. DynamoDB makes no effort to resolve conflicts in writes made by different nodes outside of direct causality, and will simply store and return multiple values if concurrent, conflicting writes are made. Though the original variant of DynamoDB uses consistent hashing, we will not be using it in this project. In addition, the original method which gossips periodically, but it is now invoked only when the client calls the function to simply the testing strategy.
+
+It takes reference from this paper: [DynamoDB paper](https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf)
 
 ## Usage
 ### Step 0: Install Go and Node.js
