@@ -24,6 +24,6 @@
   },
   "homepage": "https://github.com/ucsd-cse-x24-fa20/module-4-project-cse224-chan-xia#readme",
   "devDependencies": {
-    "fkill": "^7.1.0"
+    "fkill": "^7.2.1"
   }
 }
